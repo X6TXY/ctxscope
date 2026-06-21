@@ -1,21 +1,41 @@
 {
-  "name": "ctxscope",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "name": "@x6txy/ctxscope",
+  "version": "0.1.0",
+  "description": "Inspect and lint coding-agent context files",
+  "type": "module",
+  "keywords": [
+    "agents",
+    "ai",
+    "codex",
+    "claude",
+    "opencode",
+    "cli",
+    "context",
+    "lint"
+  ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/X6TXY/ctxscope.git"
+    "url": "git+https://github.com/x6txy/ctxscope.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/X6TXY/ctxscope/issues"
+    "url": "https://github.com/x6txy/ctxscope/issues"
   },
-  "homepage": "https://github.com/X6TXY/ctxscope#readme"
+  "homepage": "https://github.com/x6txy/ctxscope#readme",
+  "bin": {
+    "ctxscope": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsup src/cli.ts --format esm --clean",
+    "prepack": "pnpm build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
 }
