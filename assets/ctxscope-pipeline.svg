@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260" width="900" height="260">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#059669"/>
+      <stop offset="100%" style="stop-color:#10b981"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#818cf8"/>
+    </linearGradient>
+    <linearGradient id="g3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#fbbf24"/>
+    </linearGradient>
+    <linearGradient id="g4" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9"/>
+      <stop offset="100%" style="stop-color:#38bdf8"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="900" height="260" rx="12" fill="#f8fafc"/>
+  <rect x="0" y="0" width="900" height="260" rx="12" fill="none" stroke="#e2e8f0" stroke-width="2"/>
+
+  <text x="450" y="32" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#1e293b">ctxscope Pipeline</text>
+
+  <!-- Step 1: Scan -->
+  <rect x="40" y="60" width="140" height="130" rx="10" fill="#f0fdf4" stroke="#059669" stroke-width="2"/>
+  <circle cx="110" cy="92" r="16" fill="url(#g1)"/>
+  <text x="110" y="97" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="white">1</text>
+  <text x="110" y="125" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#059669">Scan</text>
+  <text x="110" y="145" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#475569">Discover all agent</text>
+  <text x="110" y="160" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#475569">context files</text>
+  <text x="110" y="178" text-anchor="middle" font-family="monospace" font-size="9" fill="#64748b">ctxscope scan</text>
+
+  <!-- Arrow 1->2 -->
+  <line x1="180" y1="125" x2="215" y2="125" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Step 2: Diagnose -->
+  <rect x="220" y="60" width="140" height="130" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+  <circle cx="290" cy="92" r="16" fill="url(#g2)"/>
+  <text x="290" y="97" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="white">2</text>
+  <text x="290" y="125" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#6366f1">Diagnose</text>
+  <text x="290" y="145" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#475569">Validate, score,</text>
+  <text x="290" y="160" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#475569">detect conflicts</text>
+  <text x="290" y="178" text-anchor="middle" font-family="monospace" font-size="9" fill="#64748b">ctxscope doctor</text>
+
+  <!-- Arrow 2->3 -->
+  <line x1="360" y1="125" x2="395" y2="125" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Step 3: Fix -->
+  <rect x="400" y="60" width="140" height="130" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+  <circle cx="470" cy="92" r="16" fill="url(#g3)"/>
+  <text x="470" y="97" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="white">3</text>
+  <text x="470" y="125" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#d97706">Fix</text>
+  <text x="470" y="145" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#475569">Apply deterministic</text>
+  <text x="470" y="160" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#475569">safe autofixes</text>
+  <text x="470" y="178" text-anchor="middle" font-family="monospace" font-size="9" fill="#64748b">ctxscope fix</text>
+
+  <!-- Arrow 3->4 -->
+  <line x1="540" y1="125" x2="575" y2="125" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Step 4: Verify -->
+  <rect x="580" y="60" width="140" height="130" rx="10" fill="#ecfeff" stroke="#0ea5e9" stroke-width="2"/>
+  <circle cx="650" cy="92" r="16" fill="url(#g4)"/>
+  <text x="650" y="97" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="white">4</text>
+  <text x="650" y="125" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#0284c7">Verify</text>
+  <text x="650" y="145" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#475569">Re-check, compare</text>
+  <text x="650" y="160" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#475569">with git baseline</text>
+  <text x="650" y="178" text-anchor="middle" font-family="monospace" font-size="9" fill="#64748b">--changed / --diff</text>
+
+  <!-- Arrow 4->infinity -->
+  <line x1="720" y1="125" x2="760" y2="125" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Loop arrow back -->
+  <path d="M765 125 Q830 125, 830 200 Q830 230, 450 230 Q70 230, 70 200 Q70 125, 40 125" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow)"/>
+  <text x="450" y="245" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#94a3b8" font-style="italic">Iterate until clean</text>
+</svg>
