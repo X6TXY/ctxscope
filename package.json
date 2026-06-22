@@ -1,6 +1,6 @@
 {
   "name": "@x6txy/ctxscope",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Inspect and lint coding-agent context files",
   "type": "module",
   "keywords": [
