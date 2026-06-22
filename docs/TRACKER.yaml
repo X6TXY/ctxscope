@@ -30,3 +30,56 @@ plans:
       - name: docs-release
         file: 08-docs-release.md
         status: done
+  - name: ctxscope-v0.3
+    path: systems/ctxscope-v0.3/
+    status: shipped
+    created: 2026-06-22
+    started: 2026-06-22
+    shipped: 2026-06-22
+    tasks:
+      - name: diagnostic-locations-recommendations
+        file: 01-diagnostic-locations-recommendations.md
+        status: done
+      - name: context-score
+        file: 02-context-score.md
+        status: done
+      - name: fix-engine-cli
+        file: 03-fix-engine-cli.md
+        status: done
+      - name: safe-fixers
+        file: 04-safe-fixers.md
+        status: done
+      - name: tests-readme
+        file: 05-tests-readme.md
+        status: done
+  - name: ctxscope-v0.4-cli-lifecycle
+    path: systems/ctxscope-v0.4-cli-lifecycle/
+    status: shipped
+    created: 2026-06-22
+    started: 2026-06-22
+    shipped: 2026-06-22
+    tasks:
+      - name: explain-command
+        file: 01-explain-command.md
+        status: done
+      - name: top-cost-commands
+        file: 02-top-cost-commands.md
+        status: done
+      - name: repo-fact-detection
+        file: 03-repo-fact-detection.md
+        status: done
+      - name: generate-command
+        file: 04-generate-command.md
+        status: done
+      - name: init-agent-workflow
+        file: 05-init-agent-workflow.md
+        status: done
+      - name: doctor-changed
+        file: 06-doctor-changed.md
+        status: done
+      - name: doctor-diff
+        file: 07-doctor-diff.md
+        status: done
+      - name: tests-readme-release
+        file: 08-tests-readme-release.md
+        status: done

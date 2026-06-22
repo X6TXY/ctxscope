@@ -1,7 +1,7 @@
 {
   "name": "@x6txy/ctxscope",
-  "version": "0.2.1",
-  "description": "Inspect and lint coding-agent context files",
+  "version": "0.4.0",
+  "description": "Set up and maintain correct instructions for AI coding agents",
   "type": "module",
   "keywords": [
     "agents",
@@ -32,6 +32,7 @@
   ],
   "scripts": {
     "build": "tsup src/cli.ts --format esm --clean",
+    "test": "pnpm build && tsup test/*.test.ts --format esm --platform node --out-dir dist-test --clean && node --test dist-test/*.test.js",
     "prepack": "pnpm build"
   },
   "engines": {

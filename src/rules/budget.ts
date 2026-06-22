@@ -11,6 +11,7 @@ export function collectBudgetDiagnostics(scan: ScanResult, config: CtxscopeConfi
     defaultSeverity: "error",
     path: scan.target,
     message: `total context is ~${scan.totalTokens} tokens, budget is ${config.maxTokens}`,
+    recommendation: "remove duplicated or low-value instructions, or raise maxTokens in ctxscope.config.json",
   }, config);
 
   return diagnostic ? [diagnostic] : [];

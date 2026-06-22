@@ -1,4 +1,6 @@
 import type { Diagnostic, DoctorResult, ScanResult } from "./types.js";
+import type { FixResult } from "./fix.js";
+import type { RuleExplanation } from "./explain.js";
 
 const colorEnabled = process.env.NO_COLOR === undefined && (process.stdout.isTTY || process.env.FORCE_COLOR !== undefined);
 const colors = {
@@ -36,6 +38,7 @@ export function formatHumanDoctorResult(result: DoctorResult): string {
   const sections = [
     colors.bold(colors.cyan("ctxscope doctor")),
     formatDoctorMeta(result),
+    formatDoctorScore(result),
     formatDoctorSummary(result),
     formatDoctorDiagnostics(result),
   ];
@@ -49,16 +52,47 @@ export function formatJsonDoctorResult(result: DoctorResult): string {
     target: result.target,
     status: result.status,
     summary: result.summary,
+    score: result.score,
     files: result.files,
     diagnostics: result.diagnostics,
+  }, null, 2);
+}
+
+export function formatHumanFixResult(result: FixResult): string {
+  const sections = [
+    colors.bold(colors.cyan("ctxscope fix")),
+    formatFixMeta(result),
+    formatFixSummary(result),
+    formatAppliedFixes(result),
+    formatSkippedFixes(result),
+  ];
+
+  return sections.filter(Boolean).join("\n\n");
+}
+
+export function formatJsonFixResult(result: FixResult): string {
+  return JSON.stringify({
+    target: result.target,
+    applied: result.applied,
+    skipped: result.skipped,
+    before: result.before,
+    after: result.after,
   }, null, 2);
 }
 
 function formatWarning(warning: Diagnostic): string {
   const severity = colorSeverity(warning);
   const code = warning.severity === "error" ? colors.red(warning.code) : colors.yellow(warning.code);
+  const location = warning.line === undefined ? warning.path : `${warning.path}:${warning.line}`;
+  const details = [colors.dim(warning.message)];
 
-  return `${severity} ${code}  ${warning.path}\n  ${colors.dim(warning.message)}`;
+  if (warning.fix?.safe) {
+    details.push(`${colors.dim("Fix:")} ${warning.fix.title}`);
+  } else if (warning.recommendation) {
+    details.push(`${colors.dim("Recommendation:")} ${warning.recommendation}`);
+  }
+
+  return `${severity} ${code}  ${location}\n  ${details.join("\n  ")}`;
 }
 
 function colorSeverity(diagnostic: Diagnostic): string {
@@ -132,7 +166,33 @@ function formatDoctorSummary(result: DoctorResult): string {
       result.summary.warnings > 0 ? colors.yellow(`${result.summary.warnings} warnings`) : null,
     ].filter(Boolean).join(", ");
 
-  return `${colors.bold("Summary")}\n  ${formatNumber(result.summary.files)} files, ~${formatNumber(result.summary.totalTokens)} tokens, ${diagnosticLabel}`;
+  const safeFixes = result.diagnostics.filter((diagnostic) => diagnostic.fix?.safe).length;
+  const fixLine = safeFixes > 0 ? `\n  Run ctxscope fix to apply ${safeFixes} safe ${safeFixes === 1 ? "fix" : "fixes"}.` : "";
+
+  return `${colors.bold("Summary")}\n  ${formatNumber(result.summary.files)} files, ~${formatNumber(result.summary.totalTokens)} tokens, ${diagnosticLabel}${fixLine}`;
+}
+
+function formatDoctorScore(result: DoctorResult): string {
+  return [
+    `${colors.bold("Agent Context Score")}  ${scoreColor(result.score.overall)(`${result.score.overall}/100`)}`,
+    `  Correctness  ${scoreColor(result.score.correctness)(String(result.score.correctness))}`,
+    `  Freshness    ${scoreColor(result.score.freshness)(String(result.score.freshness))}`,
+    `  Efficiency   ${scoreColor(result.score.efficiency)(String(result.score.efficiency))}`,
+    `  Consistency  ${scoreColor(result.score.consistency)(String(result.score.consistency))}`,
+    `  Coverage     ${scoreColor(result.score.coverage)(String(result.score.coverage))}`,
+  ].join("\n");
+}
+
+function scoreColor(score: number): (value: string) => string {
+  if (score >= 80) {
+    return colors.green;
+  }
+
+  if (score >= 60) {
+    return colors.yellow;
+  }
+
+  return colors.red;
 }
 
 function formatDoctorDiagnostics(result: DoctorResult): string {
@@ -153,6 +213,73 @@ function formatDoctorDiagnostics(result: DoctorResult): string {
   }
 
   return sections.join("\n\n");
+}
+
+function formatFixMeta(result: FixResult): string {
+  const dryRun = result.applied.some((fix) => fix.dryRun);
+  return [
+    `${colors.dim("Target")}  ${result.target}`,
+    `${colors.dim("Mode")}    ${dryRun ? "dry-run" : "write"}`,
+  ].join("\n");
+}
+
+function formatFixSummary(result: FixResult): string {
+  const beforeScore = result.before.score.overall;
+  const afterScore = result.after.score.overall;
+  const beforeTokens = result.before.summary.totalTokens;
+  const afterTokens = result.after.summary.totalTokens;
+  const savedTokens = Math.max(0, beforeTokens - afterTokens);
+  const action = result.applied.some((fix) => fix.dryRun) ? "Would apply" : "Applied";
+
+  return [
+    `${colors.bold("Summary")}`,
+    `  Agent Context Score  ${scoreColor(afterScore)(`${beforeScore} -> ${afterScore}`)}`,
+    `  ${action} ${result.applied.length} safe ${result.applied.length === 1 ? "fix" : "fixes"}`,
+    `  Skipped ${result.skipped.length} ${result.skipped.length === 1 ? "fix" : "fixes"}`,
+    `  Saved ~${formatNumber(savedTokens)} tokens per session`,
+  ].join("\n");
+}
+
+function formatAppliedFixes(result: FixResult): string {
+  if (result.applied.length === 0) {
+    return "";
+  }
+
+  return `${colors.bold(result.applied.some((fix) => fix.dryRun) ? "Would Apply" : "Applied")} ${colors.dim(`(${result.applied.length})`)}\n${result.applied
+    .map((fix) => `${fix.code}  ${fix.path}\n  ${colors.dim(fix.title)}`)
+    .join("\n")}`;
+}
+
+function formatSkippedFixes(result: FixResult): string {
+  if (result.skipped.length === 0) {
+    return "";
+  }
+
+  return `${colors.bold("Skipped")} ${colors.dim(`(${result.skipped.length})`)}\n${result.skipped
+    .map((fix) => `${fix.code}  ${fix.path}\n  ${colors.dim(`${fix.title}: ${fix.reason}`)}`)
+    .join("\n")}`;
+}
+
+export function formatHumanExplainResult(explanation: RuleExplanation): string {
+  const severity = explanation.severity === "error"
+    ? colors.red(explanation.severity.toUpperCase())
+    : colors.yellow(explanation.severity.toUpperCase());
+  const fix = explanation.safeAutofix
+    ? `  ${colors.dim("Autofix:")} yes (run ctxscope fix)`
+    : `  ${colors.dim("Autofix:")} no`;
+
+  return [
+    `${colors.bold(explanation.code)}: ${explanation.title}`,
+    `  ${colors.dim("Severity:")} ${severity}`,
+    `  ${colors.dim("Problem:")} ${explanation.problem}`,
+    `  ${colors.dim("Why:")} ${explanation.whyItMatters}`,
+    `  ${colors.dim("Fix:")} ${explanation.fix}`,
+    fix,
+  ].join("\n");
+}
+
+export function formatJsonExplainResult(explanation: RuleExplanation): string {
+  return JSON.stringify(explanation, null, 2);
 }
 
 function formatTokenCell(tokens: number, skippedBinary: boolean): string {

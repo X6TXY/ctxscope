@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.4.0 - 2026-06-22
+
+### Added
+
+- Added `ctxscope init --agent <agent>` and `ctxscope init --config`.
+- Added `ctxscope generate --agent <agent>` for deterministic agent instruction setup (Claude Code, Codex, OpenCode, Cursor, Copilot, Gemini CLI, Windsurf).
+- Added `ctxscope explain CTXxxx` for in-cli diagnostic documentation.
+- Added `ctxscope top` and `ctxscope cost` for context overhead visibility.
+- Added `ctxscope doctor --changed` for working tree context impact.
+- Added `ctxscope doctor --diff <base>` for non-mutating context regression comparison.
+- Added Agent Context Score to `ctxscope doctor`.
+- Added diagnostic line and column metadata where rules can locate the issue.
+- Added recommendations and safe fix metadata to diagnostics.
+- Added `ctxscope fix` with `--dry-run`, `--json`, and `--agent` support.
+- Added deterministic package manager normalization for context files when exactly one lockfile identifies the package manager.
+- Added exact duplicate paragraph removal.
+- Added `node:test` coverage for doctor metadata, scoring, fix behavior, repo facts, generate, and explain.
+
+### Changed
+
+- Repositioned README around CLI-first agent context lifecycle.
+- `CTX102` missing script references are recommendation-only and are not autofixed by default.
+
+### Removed
+
+- Removed `init` strict argument rejection in favor of subcommand dispatch.
+
 ## 0.2.0 - 2026-06-21
 
 ### Added

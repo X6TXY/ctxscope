@@ -16,6 +16,10 @@ export function createDiagnostic(input: DiagnosticInput, config: CtxscopeConfig)
     severity,
     path: input.path,
     message: input.message,
+    line: input.line,
+    column: input.column,
+    recommendation: input.recommendation,
+    fix: input.fix,
   };
 }
 

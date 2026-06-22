@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 import { createDiagnostic, sortDiagnostics } from "./diagnostics.js";
+import { firstRegexLocation, locationFromOffset } from "./locations.js";
 import type { ContextFile, CtxscopeConfig, Diagnostic } from "./types.js";
 
 const MARKER_PATTERN = /\b(TODO|FIXME|OBSOLETE)\b/i;
@@ -55,11 +56,15 @@ function collectFileDiagnostics(input: WarningInput, config: CtxscopeConfig): Di
   }
 
   if (MARKER_PATTERN.test(content)) {
+    const location = firstRegexLocation(content, new RegExp(MARKER_PATTERN.source, MARKER_PATTERN.flags));
     pushDiagnostic(diagnostics, createDiagnostic({
       code: "CTX005",
       defaultSeverity: "warn",
       path: file.path,
       message: "contains TODO, FIXME, or obsolete markers",
+      line: location?.line,
+      column: location?.column,
+      recommendation: "remove stale TODO, FIXME, or obsolete instructions from agent context",
     }, config));
   }
 
@@ -132,6 +137,9 @@ function collectStaleLinkDiagnostics(absolutePath: string, displayPath: string, 
         defaultSeverity: "warn",
         path: displayPath,
         message: `links to missing file: ${href}`,
+        line: match.index === undefined ? undefined : locationFromOffset(content, match.index).line,
+        column: match.index === undefined ? undefined : locationFromOffset(content, match.index).column,
+        recommendation: "remove the stale link or update it to an existing file",
       }, config));
     }
   }
@@ -140,28 +148,51 @@ function collectStaleLinkDiagnostics(absolutePath: string, displayPath: string, 
 }
 
 function collectRepeatedParagraphDiagnostics(displayPath: string, content: string, config: CtxscopeConfig): Diagnostic[] {
-  const paragraphs = content
-    .split(/\n\s*\n/)
-    .map((paragraph) => paragraph.trim().replace(/\s+/g, " "))
-    .filter((paragraph) => paragraph.length >= 40);
+  const paragraphs = collectParagraphs(content);
   const seen = new Set<string>();
 
   for (const paragraph of paragraphs) {
-    if (seen.has(paragraph)) {
+    if (seen.has(paragraph.normalized)) {
+      const location = locationFromOffset(content, paragraph.offset);
       const diagnostic = createDiagnostic({
         code: "CTX006",
         defaultSeverity: "warn",
         path: displayPath,
         message: "contains a repeated paragraph",
+        line: location.line,
+        column: location.column,
+        fix: {
+          title: "Remove repeated paragraph",
+          kind: "delete",
+          safe: true,
+        },
       }, config);
 
       return diagnostic ? [diagnostic] : [];
     }
 
-    seen.add(paragraph);
+    seen.add(paragraph.normalized);
   }
 
   return [];
+}
+
+function collectParagraphs(content: string): Array<{ normalized: string; offset: number }> {
+  const paragraphs: Array<{ normalized: string; offset: number }> = [];
+  const pattern = /(^|\n)([^\S\r\n]*\S[\s\S]*?)(?=\n\s*\n|$)/g;
+
+  for (const match of content.matchAll(pattern)) {
+    const raw = match[2] ?? "";
+    const trimmedStart = raw.search(/\S/);
+    const offset = (match.index ?? 0) + (match[1]?.length ?? 0) + Math.max(trimmedStart, 0);
+    const normalized = raw.trim().replace(/\s+/g, " ");
+
+    if (normalized.length >= 40) {
+      paragraphs.push({ normalized, offset });
+    }
+  }
+
+  return paragraphs;
 }
 
 function shouldSkipLink(href: string): boolean {

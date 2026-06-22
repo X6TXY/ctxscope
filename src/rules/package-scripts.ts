@@ -2,11 +2,14 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 import { createDiagnostic, sortDiagnostics } from "../diagnostics.js";
+import { locationFromOffset } from "../locations.js";
 import type { ContextFile, CtxscopeConfig, Diagnostic } from "../types.js";
 
 type ScriptMention = {
   path: string;
   script: string;
+  line?: number;
+  column?: number;
 };
 
 const SCRIPT_PATTERNS = [
@@ -48,6 +51,9 @@ export function collectPackageScriptDiagnostics(
       defaultSeverity: "error",
       path: mention.path,
       message: `references missing package script: ${mention.script}`,
+      line: mention.line,
+      column: mention.column,
+      recommendation: "remove the command or replace it with an existing package.json script",
     }, config);
 
     if (diagnostic) {
@@ -72,7 +78,8 @@ function collectScriptMentions(root: string, file: ContextFile): ScriptMention[]
     for (const match of content.matchAll(pattern)) {
       const script = match[1];
       if (script) {
-        mentions.push({ path: file.path, script });
+        const location = locationFromOffset(content, match.index ?? 0);
+        mentions.push({ path: file.path, script, line: location.line, column: location.column });
       }
     }
   }

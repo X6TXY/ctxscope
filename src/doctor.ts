@@ -3,6 +3,7 @@ import { collectBudgetDiagnostics } from "./rules/budget.js";
 import { collectPackageManagerDiagnostics } from "./rules/package-manager.js";
 import { collectPackageScriptDiagnostics } from "./rules/package-scripts.js";
 import { sortDiagnostics } from "./diagnostics.js";
+import { calculateContextScore } from "./score.js";
 import type { Agent, CtxscopeConfig, DoctorResult } from "./types.js";
 
 export function runDoctor(target: string, agent: Agent, config: CtxscopeConfig): DoctorResult {
@@ -26,6 +27,7 @@ export function runDoctor(target: string, agent: Agent, config: CtxscopeConfig):
       warnings,
       errors,
     },
+    score: calculateContextScore(scan, diagnostics, config),
     files: scan.files,
     diagnostics,
   };
