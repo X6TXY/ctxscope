@@ -83,6 +83,22 @@ test("CTX103 suggests similar paths", () => {
   assert.ok(relevant[0]?.message.includes("apps/backend") || relevant[0]?.recommendation?.includes("apps/backend"));
 });
 
+test("CTX103 does not flag template paths with <placeholders>", () => {
+  const root = makeFixture("ctx103-template");
+  writeFileSync(join(root, "CLAUDE.md"), "See docs/plans/YYYY-MM-DD-<feature-name> for details.\nCheck docs/systems/<system-name>.\n");
+
+  const files = [{
+    path: "CLAUDE.md",
+    agents: ["claude" as const],
+    tokens: 10,
+    skippedBinary: false,
+  }];
+
+  const diagnostics = collectPathDiagnostics(root, files, DEFAULT_CONFIG);
+  const relevant = diagnostics.filter((d) => d.code === "CTX103");
+  assert.equal(relevant.length, 0);
+});
+
 test("CTX103 does not flag node_modules paths", () => {
   const root = makeFixture("ctx103-node-modules");
   writeFileSync(join(root, "CLAUDE.md"), "Check node_modules/express.\n");

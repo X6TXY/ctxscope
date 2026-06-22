@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 - 2026-06-22
+
+### Changed
+
+- CTX104 now filters false-positive command detections — skips common English words, CLI flags, dotted identifiers, single-character words, backtick-wrapped references, quoted strings, and shell redirect/pipes.
+- Backtick-wrapped references in `run/use/execute` command capture (`\`cmd\``) are now correctly stripped before command matching.
+
 ## 0.5.0 - 2026-06-22
 
 ### Changed

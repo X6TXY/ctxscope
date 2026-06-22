@@ -34,6 +34,46 @@ const BUILTIN_ALLOWLIST = new Set([
   "biome", "rome",
 ]);
 
+const COMMON_WORDS = new Set([
+  "this", "the", "it", "and", "for", "when", "has", "is", "are",
+  "all", "any", "not", "also", "how", "what", "which", "by", "to",
+  "in", "on", "of", "with", "as", "an", "or", "but", "if", "no",
+  "just", "very", "so", "we", "be", "do", "can", "will", "may",
+  "than", "then", "that", "there", "their", "they", "have", "been",
+  "into", "would", "could", "should", "does", "did", "done", "get",
+  "got", "use", "using", "used", "run", "running", "ran", "set",
+  "see", "need", "make", "made", "take", "tell", "some", "more",
+  "each", "every", "both", "few", "those", "these",
+  "his", "her", "its", "our", "your", "my",
+  "one", "two", "who", "where", "why", "while",
+  "up", "down", "out", "off", "over", "under", "about",
+]);
+
+function shouldSkipCommand(cmd: string): boolean {
+  if (cmd.length < 2) {
+    return true;
+  }
+  if (cmd.startsWith("-")) {
+    return true;
+  }
+  if (cmd.includes(".")) {
+    return true;
+  }
+  if (cmd.startsWith(">") || cmd.startsWith("|") || cmd.startsWith("&") || cmd.startsWith("$")) {
+    return true;
+  }
+  if (cmd.includes("`")) {
+    return true;
+  }
+  if (/^["'"]/.test(cmd) || /["'"]$/.test(cmd)) {
+    return true;
+  }
+  if (COMMON_WORDS.has(cmd)) {
+    return true;
+  }
+  return false;
+}
+
 export function collectToolCommandDiagnostics(
   target: string,
   files: ContextFile[],
@@ -69,6 +109,10 @@ export function collectToolCommandDiagnostics(
 
     for (const { command, offset } of commands) {
       const cmd = command.toLowerCase().trim();
+
+      if (shouldSkipCommand(cmd)) {
+        continue;
+      }
 
       if (seenCommands.has(cmd)) {
         continue;
@@ -155,7 +199,7 @@ function extractCommands(content: string): { command: string; offset: number }[]
 
   const directPattern = /\b(?:run|use|execute)\s+(\S+)/gi;
   for (const match of content.matchAll(directPattern)) {
-    const rawCmd = match[1]?.trim();
+    const rawCmd = match[1]?.trim().replace(/^`+|`+$/g, "");
     if (rawCmd) {
       if (isExecPrefix(rawCmd)) {
         continue;

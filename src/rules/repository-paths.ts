@@ -85,6 +85,11 @@ export function collectPathDiagnostics(
   return diagnostics;
 }
 
+const TEMPLATE_PATTERNS = [
+  /<[^>]*>?/,
+  /\bYYYY[-/]MM[-/]DD\b/,
+];
+
 function shouldSkipPath(rawPath: string): boolean {
   const firstSegment = rawPath.split("/")[0] ?? "";
 
@@ -98,6 +103,12 @@ function shouldSkipPath(rawPath: string): boolean {
 
   if (/^\/[^/]/.test(rawPath)) {
     return true;
+  }
+
+  for (const pattern of TEMPLATE_PATTERNS) {
+    if (pattern.test(rawPath)) {
+      return true;
+    }
   }
 
   return false;
