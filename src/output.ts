@@ -1,4 +1,4 @@
-import type { ScanResult } from "./types.js";
+import type { Diagnostic, DoctorResult, ScanResult } from "./types.js";
 
 const colorEnabled = process.env.NO_COLOR === undefined && (process.stdout.isTTY || process.env.FORCE_COLOR !== undefined);
 const colors = {
@@ -6,6 +6,7 @@ const colors = {
   cyan: (value: string) => color("\u001b[36m", value),
   dim: (value: string) => color("\u001b[2m", value),
   green: (value: string) => color("\u001b[32m", value),
+  red: (value: string) => color("\u001b[31m", value),
   yellow: (value: string) => color("\u001b[33m", value),
 };
 
@@ -31,8 +32,39 @@ export function formatJsonScanResult(result: ScanResult): string {
   }, null, 2);
 }
 
-function formatWarning(warning: ScanResult["warnings"][number]): string {
-  return `${colors.yellow(warning.severity.toUpperCase())} ${colors.yellow(warning.code)}  ${warning.path}\n  ${colors.dim(warning.message)}`;
+export function formatHumanDoctorResult(result: DoctorResult): string {
+  const sections = [
+    colors.bold(colors.cyan("ctxscope doctor")),
+    formatDoctorMeta(result),
+    formatDoctorSummary(result),
+    formatDoctorDiagnostics(result),
+  ];
+
+  return sections.filter(Boolean).join("\n\n");
+}
+
+export function formatJsonDoctorResult(result: DoctorResult): string {
+  return JSON.stringify({
+    agent: result.agent,
+    target: result.target,
+    status: result.status,
+    summary: result.summary,
+    files: result.files,
+    diagnostics: result.diagnostics,
+  }, null, 2);
+}
+
+function formatWarning(warning: Diagnostic): string {
+  const severity = colorSeverity(warning);
+  const code = warning.severity === "error" ? colors.red(warning.code) : colors.yellow(warning.code);
+
+  return `${severity} ${code}  ${warning.path}\n  ${colors.dim(warning.message)}`;
+}
+
+function colorSeverity(diagnostic: Diagnostic): string {
+  return diagnostic.severity === "error"
+    ? colors.red(diagnostic.severity.toUpperCase())
+    : colors.yellow(diagnostic.severity.toUpperCase());
 }
 
 function formatMeta(result: ScanResult): string {
@@ -64,11 +96,16 @@ function formatFiles(result: ScanResult): string {
 }
 
 function formatSummary(result: ScanResult): string {
-  const warningLabel = result.warnings.length === 0
-    ? colors.green("0 warnings")
-    : colors.yellow(`${result.warnings.length} warnings`);
+  const errors = result.warnings.filter((warning) => warning.severity === "error").length;
+  const warnings = result.warnings.filter((warning) => warning.severity === "warn").length;
+  const diagnosticLabel = result.warnings.length === 0
+    ? colors.green("0 diagnostics")
+    : [
+      errors > 0 ? colors.red(`${errors} errors`) : null,
+      warnings > 0 ? colors.yellow(`${warnings} warnings`) : null,
+    ].filter(Boolean).join(", ");
 
-  return `${colors.bold("Summary")}\n  ${formatNumber(result.files.length)} files, ~${formatNumber(result.totalTokens)} tokens, ${warningLabel}`;
+  return `${colors.bold("Summary")}\n  ${formatNumber(result.files.length)} files, ~${formatNumber(result.totalTokens)} tokens, ${diagnosticLabel}`;
 }
 
 function formatWarnings(result: ScanResult): string {
@@ -76,7 +113,46 @@ function formatWarnings(result: ScanResult): string {
     return "";
   }
 
-  return `${colors.bold("Warnings")} ${colors.dim(`(${result.warnings.length})`)}\n${result.warnings.map(formatWarning).join("\n")}`;
+  return `${colors.bold("Diagnostics")} ${colors.dim(`(${result.warnings.length})`)}\n${result.warnings.map(formatWarning).join("\n")}`;
+}
+
+function formatDoctorMeta(result: DoctorResult): string {
+  return [
+    `${colors.dim("Agent")}   ${result.agent}`,
+    `${colors.dim("Target")}  ${result.target}`,
+    `${colors.dim("Status")}  ${result.status === "pass" ? colors.green("pass") : colors.red("fail")}`,
+  ].join("\n");
+}
+
+function formatDoctorSummary(result: DoctorResult): string {
+  const diagnosticLabel = result.diagnostics.length === 0
+    ? colors.green("0 diagnostics")
+    : [
+      result.summary.errors > 0 ? colors.red(`${result.summary.errors} errors`) : null,
+      result.summary.warnings > 0 ? colors.yellow(`${result.summary.warnings} warnings`) : null,
+    ].filter(Boolean).join(", ");
+
+  return `${colors.bold("Summary")}\n  ${formatNumber(result.summary.files)} files, ~${formatNumber(result.summary.totalTokens)} tokens, ${diagnosticLabel}`;
+}
+
+function formatDoctorDiagnostics(result: DoctorResult): string {
+  if (result.diagnostics.length === 0) {
+    return "";
+  }
+
+  const errors = result.diagnostics.filter((diagnostic) => diagnostic.severity === "error");
+  const warnings = result.diagnostics.filter((diagnostic) => diagnostic.severity === "warn");
+  const sections: string[] = [];
+
+  if (errors.length > 0) {
+    sections.push(`${colors.bold("Errors")} ${colors.dim(`(${errors.length})`)}\n${errors.map(formatWarning).join("\n")}`);
+  }
+
+  if (warnings.length > 0) {
+    sections.push(`${colors.bold("Warnings")} ${colors.dim(`(${warnings.length})`)}\n${warnings.map(formatWarning).join("\n")}`);
+  }
+
+  return sections.join("\n\n");
 }
 
 function formatTokenCell(tokens: number, skippedBinary: boolean): string {

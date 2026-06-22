@@ -10,11 +10,22 @@ export type ContextFile = {
   skippedBinary: boolean;
 };
 
-export type Warning = {
-  code: "CTX001" | "CTX002" | "CTX003" | "CTX004" | "CTX005" | "CTX006";
-  severity: "warn";
+export type RuleSeverity = "off" | "warn" | "error";
+
+export type DiagnosticSeverity = Exclude<RuleSeverity, "off">;
+
+export type Diagnostic = {
+  code: "CTX001" | "CTX002" | "CTX003" | "CTX004" | "CTX005" | "CTX006" | string;
+  severity: DiagnosticSeverity;
   path: string;
   message: string;
+};
+
+export type CtxscopeConfig = {
+  maxTokens: number;
+  maxFileTokens: number;
+  ignore: string[];
+  rules: Record<string, RuleSeverity>;
 };
 
 export type ScanResult = {
@@ -22,5 +33,19 @@ export type ScanResult = {
   target: string;
   files: ContextFile[];
   totalTokens: number;
-  warnings: Warning[];
+  warnings: Diagnostic[];
+};
+
+export type DoctorResult = {
+  agent: Agent;
+  target: string;
+  status: "pass" | "fail";
+  summary: {
+    files: number;
+    totalTokens: number;
+    warnings: number;
+    errors: number;
+  };
+  files: ContextFile[];
+  diagnostics: Diagnostic[];
 };

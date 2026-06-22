@@ -1,9 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-import type { ContextFile, Warning } from "./types.js";
+import { createDiagnostic, sortDiagnostics } from "./diagnostics.js";
+import type { ContextFile, CtxscopeConfig, Diagnostic } from "./types.js";
 
-const OVERSIZED_TOKEN_LIMIT = 2500;
 const MARKER_PATTERN = /\b(TODO|FIXME|OBSOLETE)\b/i;
 const MARKDOWN_LINK_PATTERN = /(?<!!)\[[^\]\n]+\]\(([^)]+)\)/g;
 
@@ -12,64 +12,61 @@ type WarningInput = {
   file: ContextFile;
 };
 
-export function collectWarnings(files: WarningInput[]): Warning[] {
-  const warnings: Warning[] = [];
+export function collectDiagnostics(files: WarningInput[], config: CtxscopeConfig): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
   const headings = new Map<string, string[]>();
 
   for (const input of files) {
-    warnings.push(...collectFileWarnings(input));
+    diagnostics.push(...collectFileDiagnostics(input, config));
     collectHeadings(input, headings);
   }
 
-  warnings.push(...collectDuplicateHeadingWarnings(headings));
+  diagnostics.push(...collectDuplicateHeadingDiagnostics(headings, config));
 
-  return warnings.sort((a, b) => {
-    const pathComparison = a.path.localeCompare(b.path);
-    return pathComparison === 0 ? a.code.localeCompare(b.code) : pathComparison;
-  });
+  return sortDiagnostics(diagnostics);
 }
 
-function collectFileWarnings(input: WarningInput): Warning[] {
-  const warnings: Warning[] = [];
+function collectFileDiagnostics(input: WarningInput, config: CtxscopeConfig): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
   const { file } = input;
 
   if (file.skippedBinary) {
-    return warnings;
+    return diagnostics;
   }
 
   const content = readFileSync(input.absolutePath, "utf8");
 
-  if (file.tokens > OVERSIZED_TOKEN_LIMIT) {
-    warnings.push({
+  if (file.tokens > config.maxFileTokens) {
+    pushDiagnostic(diagnostics, createDiagnostic({
       code: "CTX001",
-      severity: "warn",
+      defaultSeverity: "warn",
       path: file.path,
-      message: `larger than ${OVERSIZED_TOKEN_LIMIT} estimated tokens`,
-    });
+      message: `larger than ${config.maxFileTokens} estimated tokens`,
+    }, config));
   }
 
   if (content.trim().length === 0) {
-    warnings.push({
+    pushDiagnostic(diagnostics, createDiagnostic({
       code: "CTX004",
-      severity: "warn",
+      defaultSeverity: "warn",
       path: file.path,
       message: "empty context file",
-    });
+    }, config));
   }
 
   if (MARKER_PATTERN.test(content)) {
-    warnings.push({
+    pushDiagnostic(diagnostics, createDiagnostic({
       code: "CTX005",
-      severity: "warn",
+      defaultSeverity: "warn",
       path: file.path,
       message: "contains TODO, FIXME, or obsolete markers",
-    });
+    }, config));
   }
 
-  warnings.push(...collectStaleLinkWarnings(input.absolutePath, file.path, content));
-  warnings.push(...collectRepeatedParagraphWarnings(file.path, content));
+  diagnostics.push(...collectStaleLinkDiagnostics(input.absolutePath, file.path, content, config));
+  diagnostics.push(...collectRepeatedParagraphDiagnostics(file.path, content, config));
 
-  return warnings;
+  return diagnostics;
 }
 
 function collectHeadings(input: WarningInput, headings: Map<string, string[]>): void {
@@ -96,8 +93,8 @@ function collectHeadings(input: WarningInput, headings: Map<string, string[]>): 
   }
 }
 
-function collectDuplicateHeadingWarnings(headings: Map<string, string[]>): Warning[] {
-  const warnings: Warning[] = [];
+function collectDuplicateHeadingDiagnostics(headings: Map<string, string[]>, config: CtxscopeConfig): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
 
   for (const [heading, paths] of headings.entries()) {
     const uniquePaths = [...new Set(paths)];
@@ -106,20 +103,20 @@ function collectDuplicateHeadingWarnings(headings: Map<string, string[]>): Warni
     }
 
     for (const path of uniquePaths) {
-      warnings.push({
+      pushDiagnostic(diagnostics, createDiagnostic({
         code: "CTX002",
-        severity: "warn",
+        defaultSeverity: "warn",
         path,
         message: `heading "${heading}" appears in ${uniquePaths.length} context files`,
-      });
+      }, config));
     }
   }
 
-  return warnings;
+  return diagnostics;
 }
 
-function collectStaleLinkWarnings(absolutePath: string, displayPath: string, content: string): Warning[] {
-  const warnings: Warning[] = [];
+function collectStaleLinkDiagnostics(absolutePath: string, displayPath: string, content: string, config: CtxscopeConfig): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
   const directory = dirname(absolutePath);
 
   for (const match of content.matchAll(MARKDOWN_LINK_PATTERN)) {
@@ -130,19 +127,19 @@ function collectStaleLinkWarnings(absolutePath: string, displayPath: string, con
 
     const pathOnly = href.split("#")[0]?.split("?")[0] ?? "";
     if (!pathOnly || !existsSync(resolve(directory, pathOnly))) {
-      warnings.push({
+      pushDiagnostic(diagnostics, createDiagnostic({
         code: "CTX003",
-        severity: "warn",
+        defaultSeverity: "warn",
         path: displayPath,
         message: `links to missing file: ${href}`,
-      });
+      }, config));
     }
   }
 
-  return warnings;
+  return diagnostics;
 }
 
-function collectRepeatedParagraphWarnings(displayPath: string, content: string): Warning[] {
+function collectRepeatedParagraphDiagnostics(displayPath: string, content: string, config: CtxscopeConfig): Diagnostic[] {
   const paragraphs = content
     .split(/\n\s*\n/)
     .map((paragraph) => paragraph.trim().replace(/\s+/g, " "))
@@ -151,12 +148,14 @@ function collectRepeatedParagraphWarnings(displayPath: string, content: string):
 
   for (const paragraph of paragraphs) {
     if (seen.has(paragraph)) {
-      return [{
+      const diagnostic = createDiagnostic({
         code: "CTX006",
-        severity: "warn",
+        defaultSeverity: "warn",
         path: displayPath,
         message: "contains a repeated paragraph",
-      }];
+      }, config);
+
+      return diagnostic ? [diagnostic] : [];
     }
 
     seen.add(paragraph);
@@ -170,4 +169,10 @@ function shouldSkipLink(href: string): boolean {
     || href.startsWith("https://")
     || href.startsWith("mailto:")
     || href.startsWith("#");
+}
+
+function pushDiagnostic(diagnostics: Diagnostic[], diagnostic: Diagnostic | null): void {
+  if (diagnostic) {
+    diagnostics.push(diagnostic);
+  }
 }

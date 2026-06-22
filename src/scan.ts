@@ -2,12 +2,13 @@ import { statSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 
 import { agentsForPath, matchesAgentFilter } from "./agents.js";
+import { DEFAULT_CONFIG } from "./config.js";
 import { listFiles } from "./files.js";
 import { estimateFileTokens } from "./token.js";
-import type { Agent, ContextFile, ScanResult } from "./types.js";
-import { collectWarnings } from "./warnings.js";
+import type { Agent, ContextFile, CtxscopeConfig, ScanResult } from "./types.js";
+import { collectDiagnostics } from "./warnings.js";
 
-export function scanContext(target: string, agent: Agent): ScanResult {
+export function scanContext(target: string, agent: Agent, config: CtxscopeConfig = DEFAULT_CONFIG): ScanResult {
   const root = getScanRoot(target);
   const absoluteFiles = listFiles(target);
   const discoveredFiles = absoluteFiles
@@ -44,7 +45,7 @@ export function scanContext(target: string, agent: Agent): ScanResult {
     target,
     files: discoveredFiles,
     totalTokens: discoveredFiles.reduce((total, file) => total + file.tokens, 0),
-    warnings: collectWarnings(warningInputs),
+    warnings: collectDiagnostics(warningInputs, config),
   };
 }
 

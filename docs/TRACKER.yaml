@@ -1,0 +1,32 @@
+plans:
+  - name: ctxscope-v0.2
+    path: systems/ctxscope-v0.2/
+    status: shipped
+    created: 2026-06-21
+    started: 2026-06-21
+    shipped: 2026-06-21
+    tasks:
+      - name: config-loader
+        file: 01-config-loader.md
+        status: done
+      - name: diagnostics-model
+        file: 02-diagnostics-model.md
+        status: done
+      - name: doctor-command
+        file: 03-doctor-command.md
+        status: done
+      - name: package-manager-rule
+        file: 04-package-manager-rule.md
+        status: done
+      - name: missing-script-rule
+        file: 05-missing-script-rule.md
+        status: done
+      - name: context-budget-rule
+        file: 06-context-budget-rule.md
+        status: done
+      - name: init-command
+        file: 07-init-command.md
+        status: done
+      - name: docs-release
+        file: 08-docs-release.md
+        status: done
