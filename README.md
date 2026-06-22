@@ -157,14 +157,14 @@ conservative—review before committing.
 
 Supported agents:
 
-| Agent | Creates |
-| --- | --- |
-| `claude` | `CLAUDE.md` |
-| `codex` | `AGENTS.md` |
-| `opencode` | `AGENTS.md` |
-| `cursor` | `.cursor/rules/ctxscope-generated.mdc` |
-| `copilot` | `.github/copilot-instructions.md` |
-| `gemini` | `GEMINI.md` |
+| Agent      | Creates                                 |
+| ---------- | --------------------------------------- |
+| `claude`   | `CLAUDE.md`                             |
+| `codex`    | `AGENTS.md`                             |
+| `opencode` | `AGENTS.md`                             |
+| `cursor`   | `.cursor/rules/ctxscope-generated.mdc`  |
+| `copilot`  | `.github/copilot-instructions.md`       |
+| `gemini`   | `GEMINI.md`                             |
 | `windsurf` | `.windsurf/rules/ctxscope-generated.md` |
 
 Existing files are not modified unless `--force` is provided.
@@ -323,34 +323,34 @@ comparisons.
 
 ## Supported agents
 
-| Agent | Status | Files detected |
-| --- | --- | --- |
-| Codex | Native | `AGENTS.md`, `**/AGENTS.md` |
-| OpenCode | Native | `AGENTS.md`, `**/AGENTS.md`, `.opencode/**/*.md`, `.opencode/skills/**/SKILL.md` |
-| Claude Code | Native | `CLAUDE.md`, `**/CLAUDE.md`, `AGENTS.md` |
-| Cursor | Pattern-based | `.cursor/rules/**` |
-| GitHub Copilot | Pattern-based | `.github/copilot-instructions.md` |
-| Gemini CLI | Pattern-based | `GEMINI.md` (`generate` only) |
-| Windsurf | Pattern-based | `.windsurf/rules/ctxscope-generated.md` (`generate` only) |
-| Generic | Pattern-based | `AGENTS.md`, `CLAUDE.md`, `SKILL.md`, `**/SKILL.md`, `.cursor/rules/**`, `.github/copilot-instructions.md` |
+| Agent          | Status        | Files detected                                                                                             |
+| -------------- | ------------- | ---------------------------------------------------------------------------------------------------------- |
+| Codex          | Native        | `AGENTS.md`, `**/AGENTS.md`                                                                                |
+| OpenCode       | Native        | `AGENTS.md`, `**/AGENTS.md`, `.opencode/**/*.md`, `.opencode/skills/**/SKILL.md`                           |
+| Claude Code    | Native        | `CLAUDE.md`, `**/CLAUDE.md`, `AGENTS.md`                                                                   |
+| Cursor         | Pattern-based | `.cursor/rules/**`                                                                                         |
+| GitHub Copilot | Pattern-based | `.github/copilot-instructions.md`                                                                          |
+| Gemini CLI     | Pattern-based | `GEMINI.md` (`generate` only)                                                                              |
+| Windsurf       | Pattern-based | `.windsurf/rules/ctxscope-generated.md` (`generate` only)                                                  |
+| Generic        | Pattern-based | `AGENTS.md`, `CLAUDE.md`, `SKILL.md`, `**/SKILL.md`, `.cursor/rules/**`, `.github/copilot-instructions.md` |
 
 Ignored directories: `.git`, `node_modules`, `dist`.
 
 ## Diagnostics
 
-| Code | Severity | Meaning |
-| --- | --- | --- |
-| `CTX001` | warn | Oversized context file |
-| `CTX002` | warn | Duplicate heading across context files |
-| `CTX003` | warn | Stale relative markdown link |
-| `CTX004` | warn | Empty context file |
-| `CTX005` | warn | TODO, FIXME, or obsolete marker |
-| `CTX006` | warn | Repeated paragraph (safe autofix) |
-| `CTX101` | error | Conflicting package manager instructions (safe autofix) |
-| `CTX102` | error | Missing package script referenced by context |
-| `CTX103` | warn | Referenced repository path does not exist |
-| `CTX104` | warn | Unrecognized command reference |
-| `CTX105` | error | Total context budget exceeded |
+| Code     | Severity | Meaning                                                 |
+| -------- | -------- | ------------------------------------------------------- |
+| `CTX001` | warn     | Oversized context file                                  |
+| `CTX002` | warn     | Duplicate heading across context files                  |
+| `CTX003` | warn     | Stale relative markdown link                            |
+| `CTX004` | warn     | Empty context file                                      |
+| `CTX005` | warn     | TODO, FIXME, or obsolete marker                         |
+| `CTX006` | warn     | Repeated paragraph (safe autofix)                       |
+| `CTX101` | error    | Conflicting package manager instructions (safe autofix) |
+| `CTX102` | error    | Missing package script referenced by context            |
+| `CTX103` | warn     | Referenced repository path does not exist               |
+| `CTX104` | warn     | Unrecognized command reference                          |
+| `CTX105` | error    | Total context budget exceeded                           |
 
 ## Configuration
 
@@ -424,6 +424,13 @@ ctxscope fix --json
   positives for custom project-local tools.
 - Gemini CLI and Windsurf detection is experimental and limited to `generate`.
 - `trace`, cloud dashboard, and AI-powered fixes are future work.
+
+## Contact
+
+Created by tuple.
+
+Telegram: [@ncglx](https://t.me/ncglx)
+Email: baha200477@gmail.com
 
 ## License
 
