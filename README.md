@@ -1,20 +1,30 @@
-# ctxscope
+<div align="center">
+  <img src="assets/ctxscope-architecture.svg" alt="ctxscope Architecture" width="100%">
 
-**Keep AI coding agents in sync with your repository.**
+  # ctxscope <img src="assets/ctxscope-logo.svg" width="36" height="36" align="center" alt="ctxscope">
+
+  **Keep AI coding agents in sync with your repository.**
+
+  [![npm version](https://img.shields.io/npm/v/@x6txy/ctxscope?color=059669&label=%40x6txy%2Fctxscope)](https://www.npmjs.com/package/@x6txy/ctxscope)
+  ![Node >=20](https://img.shields.io/badge/node-%3E%3D20-059669)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-6366f1.svg)](https://opensource.org/licenses/MIT)
+  [![OpenCode Compatible](https://img.shields.io/badge/OpenCode-compatible-059669.svg)](https://opencode.ai)
+  [![Claude Code Compatible](https://img.shields.io/badge/Claude%20Code-compatible-059669.svg)](https://docs.anthropic.com/en/docs/claude-code)
+  [![Codex Compatible](https://img.shields.io/badge/Codex-compatible-6366f1.svg)](https://github.com/openai/codex)
+  [![Cursor Compatible](https://img.shields.io/badge/Cursor-compatible-6366f1.svg)](https://cursor.sh)
+</div>
+
+<br/>
 
 Your code changes. Agent instructions often do not.
 
-`ctxscope` generates, checks, fixes, and compares the context files used by
-Claude Code, Codex, Cursor, OpenCode, GitHub Copilot, Gemini CLI, and Windsurf.
-
-It catches stale commands, conflicting instructions, missing scripts, duplicated
-context, and unnecessary token usage before they confuse your agents or break CI.
+`ctxscope` is a CLI tool that **generates, checks, fixes, and compares** the context files used by Claude Code, Codex, Cursor, OpenCode, GitHub Copilot, Gemini CLI, and Windsurf. It catches stale commands, conflicting instructions, missing scripts, duplicated context, and unnecessary token usage — before they confuse your agents or break CI.
 
 ```bash
 npx @x6txy/ctxscope doctor
 ```
 
-```text
+```
 Agent Context Score  64/100
 
 ERROR CTX101  AGENTS.md:18
@@ -32,7 +42,9 @@ WARN CTX006  CLAUDE.md:42
 Run ctxscope fix to apply 1 safe fix.
 ```
 
-## Why ctxscope?
+---
+
+## <img src="assets/ctxscope-logo.svg" width="24" height="24" align="center" alt=""> The "Context Drift" Problem
 
 Agent-heavy repositories accumulate instructions across multiple files:
 
@@ -44,7 +56,7 @@ CLAUDE.md
 .opencode/skills/*/SKILL.md
 ```
 
-As the repository evolves, these files become stale, inconsistent, and expensive.
+As the repository evolves, these files become stale, inconsistent, and expensive. The result is **context drift** — agents receive outdated or conflicting instructions, wasting tokens and producing unreliable output.
 
 `ctxscope` systematically answers:
 
@@ -56,7 +68,29 @@ As the repository evolves, these files become stale, inconsistent, and expensive
 - Which problems should block CI?
 - Which problems can be fixed safely?
 
-## Install
+<div align="center">
+  <img src="assets/ctxscope-comparison.svg" alt="ctxscope Before vs After Comparison" width="100%">
+</div>
+
+---
+
+## <img src="assets/ctxscope-logo.svg" width="24" height="24" align="center" alt=""> The Solution
+
+<div align="center">
+  <img src="assets/ctxscope-pipeline.svg" alt="ctxscope Pipeline" width="100%">
+</div>
+<br/>
+
+`ctxscope` is a **zero-dependency CLI** that works as a four-stage pipeline:
+
+1. **Scan** — Discover every agent context file in your repository (`AGENTS.md`, `CLAUDE.md`, `.cursor/rules/*`, `.opencode/skills/**`, etc.)
+2. **Diagnose** — Run 10+ rules across five categories (Correctness, Freshness, Efficiency, Consistency, Coverage) and produce a health score
+3. **Fix** — Apply deterministic autofixes (package manager normalization, duplicate removal) without AI guesswork
+4. **Verify** — Compare against Git baseline (`--diff main`) or restrict to working tree changes (`--changed`) to see context drift over time
+
+---
+
+## <img src="assets/ctxscope-logo.svg" width="24" height="24" align="center" alt=""> Install
 
 ```bash
 npx @x6txy/ctxscope doctor
@@ -69,7 +103,9 @@ npm install -g @x6txy/ctxscope
 ctxscope doctor --changed
 ```
 
-## Quick start
+---
+
+## <img src="assets/ctxscope-logo.svg" width="24" height="24" align="center" alt=""> Quick Start
 
 ### 1. Create or detect agent context
 
@@ -97,7 +133,7 @@ npx @x6txy/ctxscope fix --dry-run
 npx @x6txy/ctxscope fix
 ```
 
-```text
+```
 Target  /repo
 Mode    write
 
@@ -119,7 +155,7 @@ npx @x6txy/ctxscope doctor --changed
 npx @x6txy/ctxscope doctor --diff main
 ```
 
-```text
+```
 Context Diff
 
 Score: 87 -> 74
@@ -141,221 +177,63 @@ Fixed problems:
   run: npx @x6txy/ctxscope doctor --ci
 ```
 
-## Generate
+---
 
-**Create a context file based on the repository's actual setup.**
+## <img src="assets/ctxscope-logo.svg" width="24" height="24" align="center" alt=""> Commands
 
-```bash
-ctxscope generate --agent claude
-ctxscope generate --agent codex --force
-ctxscope generate --agent cursor --dry-run
-```
+| Command | Description |
+|---|---|
+| `scan [path]` | Inventory discovered context files and hygiene warnings |
+| `doctor [path]` | Validate correctness, measure health, gate CI |
+| `fix [path]` | Apply deterministic safe repairs |
+| `generate [path]` | Create context files based on repository facts |
+| `init [path]` | Create config file or agent context |
+| `top [path]` | Find the largest context sources |
+| `cost [path]` | Estimate context overhead per session |
+| `explain <code>` | Understand any diagnostic without leaving the terminal |
 
-`ctxscope` detects repository facts: package manager, available scripts, source
-directories, and common tooling. Generated content is deterministic and
-conservative—review before committing.
+Run any command with `--help` for full options.
 
-Supported agents:
+---
 
-| Agent      | Creates                                 |
-| ---------- | --------------------------------------- |
-| `claude`   | `CLAUDE.md`                             |
-| `codex`    | `AGENTS.md`                             |
-| `opencode` | `AGENTS.md`                             |
-| `cursor`   | `.cursor/rules/ctxscope-generated.mdc`  |
-| `copilot`  | `.github/copilot-instructions.md`       |
-| `gemini`   | `GEMINI.md`                             |
-| `windsurf` | `.windsurf/rules/ctxscope-generated.md` |
+## <img src="assets/ctxscope-logo.svg" width="24" height="24" align="center" alt=""> Supported Agents
 
-Existing files are not modified unless `--force` is provided.
-
-## Doctor
-
-**Validate correctness, measure health, and gate CI.**
-
-```bash
-  ctxscope doctor [path] [--agent <agent>] [--json] [--ci] [--verbose] [--changed] [--diff <base>]
-```
-
-- `doctor` runs all rules and reports diagnostics with scores.
-- `--ci` exits with code `1` when any diagnostic has severity `error`.
-- `--verbose` shows per-category score breakdown with individual deduction sources.
-- `--changed` focuses diagnostics on the current working tree and shows repository facts delta.
-- `--diff <base>` compares context health against a Git ref without checkout mutation.
-
-```text
-ctxscope doctor --ci
-
-Agent Context Score  64/100
-  Correctness  56
-  Freshness    72
-  Efficiency   68
-  Consistency  78
-  Coverage     100
-
-Summary
-  4 files, ~9,200 tokens, 2 errors, 3 warnings
-  Run ctxscope fix to apply 1 safe fix.
-```
-
-## Fix
-
-**Apply deterministic safe repairs.**
-
-```bash
-ctxscope fix [path] [--agent <agent>] [--dry-run] [--json]
-```
-
-Current safe autofixes:
-
-- **Package manager normalization**: when exactly one lockfile identifies the
-  package manager, commands in context files are normalized.
-- **Duplicate paragraph removal**: exact repeated paragraphs after the first
-  occurrence are removed.
-
-Recommendation-only:
-
-- `CTX102` missing package script references are not autofixed by default
-  because replacing commands can break workflows.
-
-`fix --dry-run` now shows a unified diff for each change:
-
-```diff
---- a/AGENTS.md
-+++ b/AGENTS.md
-@@ -16,4 +16,4 @@
--Run npm install.
--Run npm run test.
-+Run pnpm install.
-+Run pnpm test.
-```
-
-## Top
-
-**Find the largest context sources.**
-
-```bash
-ctxscope top [path] [--agent <agent>]
-```
-
-```text
-Largest Context Files
-
-Path                               Tokens
-------------------------------------------
-AGENTS.md                          ~3,200
-.cursor/rules/backend.mdc          ~2,100
-CLAUDE.md                          ~1,740
-
-Potential savings:
-  repeated paragraphs             ~420
-```
-
-## Cost
-
-**Estimate context overhead per session.**
-
-```bash
-ctxscope cost [path] [--agent <agent>]
-```
-
-```text
-Context Overhead
-
-  Current agent context:
-    ~9,380 tokens
-
-  Efficiency:
-    budget: 8,000
-    over budget: ~1,380
-    repeated paragraph waste: ~420
-```
-
-Token counts are estimates and do not represent exact provider billing.
-
-## Explain
-
-**Understand any diagnostic without leaving the terminal.**
-
-```bash
-ctxscope explain CTX102
-```
-
-```text
-CTX102: Missing package script
-
-  Severity: ERROR
-  Problem:  Agent instructions reference a package.json script that does not
-            exist.
-  Why:      Agents may attempt to run missing commands, wasting tokens and time.
-  Fix:      Update the instruction to an existing script, or add the missing
-            script to package.json.
-  Autofix:  no (recommendation only)
-```
-
-## Scan
-
-**Inventory discovered context files and hygiene warnings.**
-
-```bash
-ctxscope scan [path] [--agent <agent>] [--json]
-```
-
-```text
-ctxscope scan
-
-Agent   all
-Target  /repo
-
-Files (3)
-Path                               Tokens  Agents
-CLAUDE.md                             ~6  claude, generic
-AGENTS.md                            ~13  codex, opencode, claude, generic
-.opencode/skills/backend/SKILL.md     ~6  opencode, generic
-
-Summary
-  3 files, ~22 tokens, 4 warnings
-```
-
-Use `scan` to see what files exist and which agents they serve.
-Use `doctor` for correctness validation, scoring, CI exit codes, and Git-aware
-comparisons.
-
-## Supported agents
-
-| Agent          | Status        | Files detected                                                                                             |
-| -------------- | ------------- | ---------------------------------------------------------------------------------------------------------- |
-| Codex          | Native        | `AGENTS.md`, `**/AGENTS.md`                                                                                |
-| OpenCode       | Native        | `AGENTS.md`, `**/AGENTS.md`, `.opencode/**/*.md`, `.opencode/skills/**/SKILL.md`                           |
-| Claude Code    | Native        | `CLAUDE.md`, `**/CLAUDE.md`, `AGENTS.md`                                                                   |
-| Cursor         | Pattern-based | `.cursor/rules/**`                                                                                         |
-| GitHub Copilot | Pattern-based | `.github/copilot-instructions.md`                                                                          |
-| Gemini CLI     | Pattern-based | `GEMINI.md` (`generate` only)                                                                              |
-| Windsurf       | Pattern-based | `.windsurf/rules/ctxscope-generated.md` (`generate` only)                                                  |
-| Generic        | Pattern-based | `AGENTS.md`, `CLAUDE.md`, `SKILL.md`, `**/SKILL.md`, `.cursor/rules/**`, `.github/copilot-instructions.md` |
+| Agent | Status | Files Detected |
+|---|---|---|
+| Codex | Native | `AGENTS.md`, `**/AGENTS.md` |
+| OpenCode | Native | `AGENTS.md`, `**/AGENTS.md`, `.opencode/**/*.md`, `.opencode/skills/**/SKILL.md` |
+| Claude Code | Native | `CLAUDE.md`, `**/CLAUDE.md`, `AGENTS.md` |
+| Cursor | Pattern-based | `.cursor/rules/**` |
+| GitHub Copilot | Pattern-based | `.github/copilot-instructions.md` |
+| Gemini CLI | Pattern-based | `GEMINI.md` (`generate` only) |
+| Windsurf | Pattern-based | `.windsurf/rules/ctxscope-generated.md` (`generate` only) |
+| Generic | Pattern-based | `AGENTS.md`, `CLAUDE.md`, `SKILL.md`, `**/SKILL.md`, `.cursor/rules/**`, `.github/copilot-instructions.md` |
 
 Ignored directories: `.git`, `node_modules`, `dist`.
 
-## Diagnostics
+---
 
-| Code     | Severity | Meaning                                                 |
-| -------- | -------- | ------------------------------------------------------- |
-| `CTX001` | warn     | Oversized context file                                  |
-| `CTX002` | warn     | Duplicate heading across context files                  |
-| `CTX003` | warn     | Stale relative markdown link                            |
-| `CTX004` | warn     | Empty context file                                      |
-| `CTX005` | warn     | TODO, FIXME, or obsolete marker                         |
-| `CTX006` | warn     | Repeated paragraph (safe autofix)                       |
-| `CTX101` | error    | Conflicting package manager instructions (safe autofix) |
-| `CTX102` | error    | Missing package script referenced by context            |
-| `CTX103` | warn     | Referenced repository path does not exist               |
-| `CTX104` | warn     | Unrecognized command reference                          |
-| `CTX105` | error    | Total context budget exceeded                           |
+## <img src="assets/ctxscope-logo.svg" width="24" height="24" align="center" alt=""> Diagnostics
 
-## Configuration
+| Code | Severity | Meaning |
+|---|---|---|
+| `CTX001` | warn | Oversized context file |
+| `CTX002` | warn | Duplicate heading across context files |
+| `CTX003` | warn | Stale relative markdown link |
+| `CTX004` | warn | Empty context file |
+| `CTX005` | warn | TODO, FIXME, or obsolete marker |
+| `CTX006` | warn | Repeated paragraph (safe autofix) |
+| `CTX101` | error | Conflicting package manager instructions (safe autofix) |
+| `CTX102` | error | Missing package script referenced by context |
+| `CTX103` | warn | Referenced repository path does not exist |
+| `CTX104` | warn | Unrecognized command reference |
+| `CTX105` | error | Total context budget exceeded |
+
+---
+
+## <img src="assets/ctxscope-logo.svg" width="24" height="24" align="center" alt=""> Configuration
 
 ```bash
-ctxscope init
 ctxscope init --config
 ```
 
@@ -382,26 +260,48 @@ Creates `ctxscope.config.json`:
 
 Severity values: `off`, `warn`, `error`.
 
-## CI
+---
 
-```yaml
-- name: Check AI agent context
-  run: npx @x6txy/ctxscope doctor --ci
-```
+## <img src="assets/ctxscope-logo.svg" width="24" height="24" align="center" alt=""> FAQ
 
-Block pull requests that introduce unresolved context errors.
+<details>
+<summary><b>"How is this different from just reading the files myself?"</b></summary>
+<br/>
 
-## JSON output
+You could manually check every context file — but `ctxscope` automates it. It runs 10+ validation rules, calculates a health score, detects cross-file conflicts (e.g., one file says `npm`, another says `pnpm`), estimates token costs, and compares against Git history. It also provides deterministic autofixes and CI integration. Doing all of that by hand for every PR doesn't scale.
+</details>
 
-Use `--json` for automation:
+<details>
+<summary><b>"Does ctxscope modify my agent files without permission?"</b></summary>
+<br/>
 
-```bash
-ctxscope scan --json
-ctxscope doctor --json
-ctxscope fix --json
-```
+No. `ctxscope fix` only runs when explicitly invoked. Use `--dry-run` to preview changes first. Generated files (`ctxscope generate`) respect existing content and require `--force` to overwrite. All fixes are deterministic — no AI-generated edits or magic.
+</details>
 
-## Safety model
+<details>
+<summary><b>"Can I use ctxscope in CI without false positives blocking deploys?"</b></summary>
+<br/>
+
+Yes. Configure severity levels per diagnostic code in `ctxscope.config.json`. Set rules you disagree with to `off` or `warn`. Errors exit with code 1 under `--ci` — you control what counts as an error. `doctor --diff main` lets you see context drift without blocking anything.
+</details>
+
+<details>
+<summary><b>"Does this work with monorepos?"</b></summary>
+<br/>
+
+Yes. `ctxscope` scans recursively from any path. Run `ctxscope doctor packages/*` to check individual packages, or point it at the root to scan everything. The `--diff` and `--changed` flags work with any Git ref or working tree.
+</details>
+
+<details>
+<summary><b>"How accurate are the token estimates?"</b></summary>
+<br/>
+
+Token counts use `ceil(character_count / 4)`, which approximates GPT-family tokenization. They are suitable for budgeting and comparison but do not represent exact provider billing. Use `ctxscope cost` to see overhead estimates per session.
+</details>
+
+---
+
+## <img src="assets/ctxscope-logo.svg" width="24" height="24" align="center" alt=""> Safety Model
 
 `ctxscope` is designed for trust over magic.
 
@@ -412,26 +312,32 @@ ctxscope fix --json
 - Generated instruction files are not overwritten without `--force`.
 - `doctor --diff` never runs `git checkout` or mutates the working tree.
 
-## Limitations
+---
+
+## <img src="assets/ctxscope-logo.svg" width="24" height="24" align="center" alt=""> Limitations
 
 - Token counts are estimates: `ceil(character_count / 4)`.
 - Discovery is pattern-based, not runtime session tracing.
-- Semantic checks are conservative. They inspect explicit commands and context
-  text, not model behavior.
-- CTX103 (path detection) recognizes common source directory patterns but may
-  miss unconventional path references.
-- CTX104 (command detection) uses a built-in allowlist and may produce false
-  positives for custom project-local tools.
+- Semantic checks are conservative. They inspect explicit commands and context text, not model behavior.
+- CTX103 (path detection) recognizes common source directory patterns but may miss unconventional path references.
+- CTX104 (command detection) uses a built-in allowlist and may produce false positives for custom project-local tools.
 - Gemini CLI and Windsurf detection is experimental and limited to `generate`.
 - `trace`, cloud dashboard, and AI-powered fixes are future work.
 
-## Contact
+---
 
-Created by tuple.
+<div align="center">
+  <br/>
+  <img src="assets/ctxscope-logo.svg" width="48" height="48" alt="">
+  <br/>
+  <br/>
 
-Telegram: [@ncglx](https://t.me/ncglx)
-Email: baha200477@gmail.com
+  Created by [tuple](https://github.com/x6txy).
 
-## License
+  Telegram: [@ncglx](https://t.me/ncglx) &nbsp;·&nbsp; Email: baha200477@gmail.com
 
-MIT
+  [MIT License](LICENSE)
+
+  <br/>
+  <i>Keep your agents honest. Ship with confidence.</i>
+</div>
