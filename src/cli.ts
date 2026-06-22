@@ -12,6 +12,8 @@ import { generateInstructions, formatGenerateResultHuman, getAgentPath, type Age
 import { InitError, initConfig } from "./init.js";
 import { formatHumanDoctorResult, formatHumanExplainResult, formatHumanFixResult, formatHumanScanResult, formatJsonDoctorResult, formatJsonExplainResult, formatJsonFixResult, formatJsonScanResult } from "./output.js";
 import { detectRepoFacts } from "./repo-facts.js";
+import { detectRepoFactsAtRef, computeRepoFactsDelta, formatDeltaHuman } from "./repo-facts-diff.js";
+import { generateCompletion, type Shell } from "./completion.js";
 import { scanContext } from "./scan.js";
 import { SUPPORTED_AGENTS, type Agent } from "./types.js";
 import { isGitRepo, getChangedFiles, listFilesAtRef, getFileContentAtRef } from "./git.js";
@@ -26,6 +28,7 @@ type DoctorOptions = {
   agent: Agent;
   ci: boolean;
   json: boolean;
+  verbose: boolean;
   changed: boolean;
   diffBase: string | undefined;
   target: string;
@@ -60,12 +63,13 @@ Usage:
   ctxscope --version
   ctxscope init [--config|--agent <agent>]
   ctxscope scan [path] [--agent <agent>] [--json]
-  ctxscope doctor [path] [--agent <agent>] [--json] [--ci] [--changed] [--diff <base>]
+  ctxscope doctor [path] [--agent <agent>] [--json] [--ci] [--verbose] [--changed] [--diff <base>]
   ctxscope fix [path] [--agent <agent>] [--dry-run] [--json]
   ctxscope explain <code> [--json]
   ctxscope generate --agent <agent> [path] [--dry-run] [--force]
   ctxscope top [path] [--agent <agent>] [--json]
   ctxscope cost [path] [--agent <agent>] [--json]
+  ctxscope completion <shell>
 
 Commands:
   init                 Create ctxscope.config.json (use --agent to generate instructions).
@@ -76,16 +80,18 @@ Commands:
   generate             Generate deterministic agent instructions.
   top                  Show largest context files.
   cost                 Show context token overhead.
+  completion           Generate shell completion script (zsh, bash, fish).
 
 Options:
   --agent <agent>      Agent profile: all, codex, opencode, claude, generic.
                        Default: all.
   --json               Print machine-readable JSON.
-  --ci                 Exit 1 when doctor finds errors.
-  --dry-run            Show fixes without writing files.
-  --force              Overwrite existing files (used with generate/init --agent).
-  -h, --help           Show this help message.
-  -v, --version        Show the package version.
+   --ci                 Exit 1 when doctor finds errors.
+   --verbose            Show detailed score breakdown (doctor only).
+   --dry-run            Show fixes without writing files.
+   --force              Overwrite existing files (used with generate/init --agent).
+   -h, --help           Show this help message.
+   -v, --version        Show the package version.
 `);
 }
 
@@ -160,6 +166,7 @@ function parseDoctorOptions(args: string[]): DoctorOptions {
     agent: "all",
     ci: false,
     json: false,
+    verbose: false,
     changed: false,
     diffBase: undefined,
     target: ".",
@@ -182,6 +189,11 @@ function parseDoctorOptions(args: string[]): DoctorOptions {
 
     if (arg === "--json") {
       options.json = true;
+      continue;
+    }
+
+    if (arg === "--verbose") {
+      options.verbose = true;
       continue;
     }
 
@@ -309,7 +321,7 @@ function runDoctorCommand(options: DoctorOptions): void {
   if (options.json) {
     console.log(formatJsonDoctorResult(result));
   } else {
-    console.log(formatHumanDoctorResult(result));
+    console.log(formatHumanDoctorResult(result, options.verbose));
   }
 
   if (options.ci && result.status === "fail") {
@@ -332,14 +344,34 @@ function runDoctorChanged(options: DoctorOptions, config: import("./types.js").C
     diagnostics: relevantDiagnostics.length > 0 ? relevantDiagnostics : result.diagnostics,
   };
 
-  const summaryLine = `Changed Context Check\n\n${changed.length} changed file${changed.length === 1 ? "" : "s"} affect agent context`;
+  const currentFacts = detectRepoFacts(process.cwd());
+  const previousFacts = detectRepoFactsAtRef(process.cwd(), "HEAD");
+  const delta = computeRepoFactsDelta(currentFacts, previousFacts);
+
+  const dim = (value: string) => value;
 
   if (options.json) {
     console.log(formatJsonDoctorResult(changedResult));
   } else {
-    console.log(summaryLine);
+    console.log("Changed Context Check");
     console.log("");
-    console.log(formatHumanDoctorResult(changedResult));
+
+    const changedList = changed.map((f) => `  ${f.path}`);
+    console.log(`${changed.length} changed file${changed.length === 1 ? "" : "s"} affect agent context:`);
+    console.log(changedList.join("\n"));
+
+    if (delta.hasChanges) {
+      console.log("");
+      console.log("Repository facts affected:");
+      console.log(formatDeltaHuman(delta));
+    }
+
+    console.log("");
+    console.log("Diagnostics:");
+    console.log(`  ${relevantDiagnostics.length} new`);
+    console.log(`  ${changedResult.diagnostics.length < result.diagnostics.length ? "1+" : "0"} resolved`);
+    console.log("");
+    console.log(formatHumanDoctorResult(changedResult, options.verbose));
   }
 
   if (options.ci && changedResult.status === "fail") {
@@ -442,7 +474,7 @@ function runFixCommand(options: FixOptions): void {
     return;
   }
 
-  console.log(formatHumanFixResult(result));
+  console.log(formatHumanFixResult(result, options.dryRun ? result.diffs : undefined));
 }
 
 function runInitCommand(): void {
@@ -773,6 +805,15 @@ function main(argv: string[]): void {
 
   if (command === "generate") {
     runGenerateCommand(args);
+    return;
+  }
+
+  if (command === "completion") {
+    const shell = args[0] as Shell | undefined;
+    if (!shell || !["zsh", "bash", "fish"].includes(shell)) {
+      fail("missing shell. Usage: ctxscope completion zsh | bash | fish");
+    }
+    console.log(generateCompletion(shell));
     return;
   }
 

@@ -1,7 +1,7 @@
 import type { ContextScore, CtxscopeConfig, Diagnostic, ScanResult } from "./types.js";
 
 const CATEGORY_RULES: Record<Exclude<keyof ContextScore, "overall">, string[]> = {
-  correctness: ["CTX101", "CTX102"],
+  correctness: ["CTX101", "CTX102", "CTX103", "CTX104"],
   freshness: ["CTX003", "CTX005"],
   efficiency: ["CTX001", "CTX006", "CTX105"],
   consistency: ["CTX002", "CTX101"],

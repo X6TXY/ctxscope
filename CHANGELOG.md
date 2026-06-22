@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.5.0 - 2026-06-22
+
+### Changed
+
+- Rewrote README.md with proper structure: problem-first, scan/doctor/fix/generate/top/cost/explain separation, quick start workflow, agent status table, CI workflow, safety model.
+
+### Added
+
+- Added `CTX103` — detects referenced paths in agent instructions that do not exist in the repository, with similar path suggestions.
+- Added `CTX104` — detects command references that are not recognized as known tools or available scripts.
+- Added `--verbose` flag to `doctor` for detailed score breakdown (shows per-category deductions).
+- Added `completion` command for zsh, bash, and fish shell completions.
+- Added unified diff display in `fix --dry-run` output (shows actual before/after changes).
+- Added `--changed` context diff with repository facts comparison (scripts, tools, directories).
+- Added `repo-facts-diff` module for comparing repository states across refs.
+
+### Changed
+
+- Doctor score categories now include CTX103 and CTX104 under `correctness`.
+- `fix` result includes machine-readable diffs for each applied edit.
+- `doctor --changed` now shows repository facts delta alongside diagnostics.
+
+## 0.4.1 - 2026-06-22
+
+### Changed
+
+- Minor README refinements.
+
 ## 0.4.0 - 2026-06-22
 
 ### Added

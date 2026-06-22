@@ -18,6 +18,8 @@ export const DEFAULT_CONFIG: CtxscopeConfig = {
     CTX006: "warn",
     CTX101: "error",
     CTX102: "error",
+    CTX103: "warn",
+    CTX104: "warn",
     CTX105: "error",
   },
 };

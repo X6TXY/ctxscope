@@ -1,5 +1,5 @@
-import type { Diagnostic, DoctorResult, ScanResult } from "./types.js";
-import type { FixResult } from "./fix.js";
+import type { Diagnostic, DoctorResult, ScanResult, ContextScore } from "./types.js";
+import type { FixResult, FixDiff } from "./fix.js";
 import type { RuleExplanation } from "./explain.js";
 
 const colorEnabled = process.env.NO_COLOR === undefined && (process.stdout.isTTY || process.env.FORCE_COLOR !== undefined);
@@ -34,16 +34,54 @@ export function formatJsonScanResult(result: ScanResult): string {
   }, null, 2);
 }
 
-export function formatHumanDoctorResult(result: DoctorResult): string {
+export function formatHumanDoctorResult(result: DoctorResult, verbose?: boolean): string {
   const sections = [
     colors.bold(colors.cyan("ctxscope doctor")),
     formatDoctorMeta(result),
-    formatDoctorScore(result),
+    verbose ? formatVerboseScore(result) : formatDoctorScore(result),
     formatDoctorSummary(result),
     formatDoctorDiagnostics(result),
   ];
 
   return sections.filter(Boolean).join("\n\n");
+}
+
+function formatVerboseScore(result: DoctorResult): string {
+  const score = result.score;
+  const diagByCode = new Map<string, Diagnostic[]>();
+  for (const d of result.diagnostics) {
+    const arr = diagByCode.get(d.code) ?? [];
+    arr.push(d);
+    diagByCode.set(d.code, arr);
+  }
+
+  const penaltyLine = (category: keyof ContextScore, codes: string[]): string[] => {
+    const lines: string[] = [];
+    let totalDeduction = 0;
+
+    for (const code of codes) {
+      const diagnostics = diagByCode.get(code) ?? [];
+      if (diagnostics.length === 0) continue;
+      const errors = diagnostics.filter((d) => d.severity === "error").length;
+      const warnings = diagnostics.filter((d) => d.severity === "warn").length;
+      const deduction = Math.min(errors * 22, 66) + Math.min(warnings * 10, 40);
+      totalDeduction += deduction;
+      const label = `${code}  ${diagnostics[0]?.message ?? ""}`;
+      lines.push(`    ${colors.dim(`-${deduction}`)}  ${label}`);
+    }
+
+    const catScore = score[category];
+    return [`  ${category.charAt(0).toUpperCase() + category.slice(1)}  ${scoreColor(catScore)(`${catScore}/100`)}`, ...lines];
+  };
+
+  return [
+    `${colors.bold("Agent Context Score")}  ${scoreColor(score.overall)(`${score.overall}/100`)}`,
+    ...penaltyLine("correctness", ["CTX101", "CTX102", "CTX103", "CTX104"]),
+    ...penaltyLine("freshness", ["CTX003", "CTX005"]),
+    ...penaltyLine("efficiency", ["CTX001", "CTX006", "CTX105"]),
+    ...penaltyLine("consistency", ["CTX002", "CTX101"]),
+    `  Coverage  ${scoreColor(score.coverage)(`${score.coverage}/100`)}`,
+  ].join("\n");
 }
 
 export function formatJsonDoctorResult(result: DoctorResult): string {
@@ -58,16 +96,40 @@ export function formatJsonDoctorResult(result: DoctorResult): string {
   }, null, 2);
 }
 
-export function formatHumanFixResult(result: FixResult): string {
+export function formatHumanFixResult(result: FixResult, diffs?: FixDiff[]): string {
   const sections = [
     colors.bold(colors.cyan("ctxscope fix")),
     formatFixMeta(result),
     formatFixSummary(result),
+    ...(diffs && diffs.length > 0 ? diffs.map(formatFixDiff) : []),
     formatAppliedFixes(result),
     formatSkippedFixes(result),
   ];
 
   return sections.filter(Boolean).join("\n\n");
+}
+
+function formatFixDiff(diff: FixDiff): string {
+  const lines = [
+    "",
+    `${colors.bold("Diff")}  ${diff.path}`,
+    colors.dim("--- a/" + diff.path),
+    colors.dim("+++ b/" + diff.path),
+  ];
+
+  for (const line of diff.diff.split("\n")) {
+    if (line.startsWith("+")) {
+      lines.push(colors.green(line));
+    } else if (line.startsWith("-")) {
+      lines.push(colors.red(line));
+    } else if (line.startsWith("@@")) {
+      lines.push(colors.cyan(line));
+    } else {
+      lines.push(line);
+    }
+  }
+
+  return lines.join("\n");
 }
 
 export function formatJsonFixResult(result: FixResult): string {

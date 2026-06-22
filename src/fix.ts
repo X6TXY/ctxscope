@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 
 import { runDoctor } from "./doctor.js";
 import { detectPackageManagerFromLockfiles, type PackageManager } from "./rules/package-manager.js";
+import { unifiedDiff } from "./diff.js";
 import type { Agent, ContextFile, CtxscopeConfig, DoctorResult } from "./types.js";
 
 export type FixOptions = {
@@ -25,19 +26,26 @@ export type SkippedFix = {
   reason: string;
 };
 
+export type FixDiff = {
+  path: string;
+  diff: string;
+};
+
 export type FixResult = {
   target: string;
   applied: AppliedFix[];
   skipped: SkippedFix[];
   before: DoctorResult;
   after: DoctorResult;
+  diffs: FixDiff[];
 };
 
 type FileEdit = {
   code: string;
   path: string;
   title: string;
-  content: string;
+  beforeContent: string;
+  afterContent: string;
 };
 
 export function runFix(options: FixOptions, config: CtxscopeConfig): FixResult {
@@ -46,6 +54,7 @@ export function runFix(options: FixOptions, config: CtxscopeConfig): FixResult {
   const skipped = collectSkippedFixes(before);
   const edits = collectSafeEdits(root, before.files);
   const applied: AppliedFix[] = [];
+  const diffs: FixDiff[] = [];
 
   for (const edit of edits) {
     applied.push({
@@ -55,8 +64,13 @@ export function runFix(options: FixOptions, config: CtxscopeConfig): FixResult {
       dryRun: options.dryRun,
     });
 
+    diffs.push({
+      path: edit.path,
+      diff: unifiedDiff(edit.beforeContent, edit.afterContent, edit.path),
+    });
+
     if (!options.dryRun) {
-      writeFileSync(resolve(root, edit.path), edit.content);
+      writeFileSync(resolve(root, edit.path), edit.afterContent);
     }
   }
 
@@ -68,6 +82,7 @@ export function runFix(options: FixOptions, config: CtxscopeConfig): FixResult {
     skipped,
     before,
     after,
+    diffs,
   };
 }
 
@@ -80,7 +95,9 @@ function collectSafeEdits(root: string, files: ContextFile[]): FileEdit[] {
 
   for (const edit of collectDuplicateParagraphEdits(root, files)) {
     const current = edits.get(edit.path);
-    edits.set(edit.path, current ? { ...edit, content: removeDuplicateParagraphs(current.content) } : edit);
+    edits.set(edit.path, current
+      ? { ...edit, beforeContent: current.beforeContent, afterContent: removeDuplicateParagraphs(current.afterContent) }
+      : edit);
   }
 
   return [...edits.values()];
@@ -106,7 +123,8 @@ function collectPackageManagerEdits(root: string, files: ContextFile[]): FileEdi
       code: "CTX101",
       path: file.path,
       title: `Normalize package manager commands to ${packageManager}`,
-      content: next,
+      beforeContent: content,
+      afterContent: next,
     }];
   });
 }
@@ -125,7 +143,8 @@ function collectDuplicateParagraphEdits(root: string, files: ContextFile[]): Fil
       code: "CTX006",
       path: file.path,
       title: "Remove repeated paragraph",
-      content: next,
+      beforeContent: content,
+      afterContent: next,
     }];
   });
 }

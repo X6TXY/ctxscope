@@ -174,12 +174,13 @@ Existing files are not modified unless `--force` is provided.
 **Validate correctness, measure health, and gate CI.**
 
 ```bash
-ctxscope doctor [path] [--agent <agent>] [--json] [--ci] [--changed] [--diff <base>]
+  ctxscope doctor [path] [--agent <agent>] [--json] [--ci] [--verbose] [--changed] [--diff <base>]
 ```
 
 - `doctor` runs all rules and reports diagnostics with scores.
 - `--ci` exits with code `1` when any diagnostic has severity `error`.
-- `--changed` focuses diagnostics on the current working tree.
+- `--verbose` shows per-category score breakdown with individual deduction sources.
+- `--changed` focuses diagnostics on the current working tree and shows repository facts delta.
 - `--diff <base>` compares context health against a Git ref without checkout mutation.
 
 ```text
@@ -216,6 +217,18 @@ Recommendation-only:
 
 - `CTX102` missing package script references are not autofixed by default
   because replacing commands can break workflows.
+
+`fix --dry-run` now shows a unified diff for each change:
+
+```diff
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -16,4 +16,4 @@
+-Run npm install.
+-Run npm run test.
++Run pnpm install.
++Run pnpm test.
+```
 
 ## Top
 
@@ -335,6 +348,8 @@ Ignored directories: `.git`, `node_modules`, `dist`.
 | `CTX006` | warn | Repeated paragraph (safe autofix) |
 | `CTX101` | error | Conflicting package manager instructions (safe autofix) |
 | `CTX102` | error | Missing package script referenced by context |
+| `CTX103` | warn | Referenced repository path does not exist |
+| `CTX104` | warn | Unrecognized command reference |
 | `CTX105` | error | Total context budget exceeded |
 
 ## Configuration
@@ -403,6 +418,10 @@ ctxscope fix --json
 - Discovery is pattern-based, not runtime session tracing.
 - Semantic checks are conservative. They inspect explicit commands and context
   text, not model behavior.
+- CTX103 (path detection) recognizes common source directory patterns but may
+  miss unconventional path references.
+- CTX104 (command detection) uses a built-in allowlist and may produce false
+  positives for custom project-local tools.
 - Gemini CLI and Windsurf detection is experimental and limited to `generate`.
 - `trace`, cloud dashboard, and AI-powered fixes are future work.
 

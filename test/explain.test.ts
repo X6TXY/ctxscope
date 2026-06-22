@@ -29,8 +29,10 @@ test("getAllCodes returns all known codes", () => {
   assert.ok(codes.includes("CTX001"));
   assert.ok(codes.includes("CTX006"));
   assert.ok(codes.includes("CTX101"));
-  assert.ok(codes.includes("CTX102"));
-  assert.ok(codes.includes("CTX105"));
+    assert.ok(codes.includes("CTX102"));
+    assert.ok(codes.includes("CTX103"));
+    assert.ok(codes.includes("CTX104"));
+    assert.ok(codes.includes("CTX105"));
 });
 
 test("CTX006 is marked as safe autofix", () => {
