@@ -239,7 +239,7 @@ test("CTX104 skips shell redirect/pipes", () => {
 test("CTX104 still catches real unknown commands mixed with prose", () => {
   const root = makeFixture("ctx104-mixed");
   writeFileSync(join(root, "CLAUDE.md"),
-    "Run this tool using some-unknown-utility --flag.\nAlso use another-unknown-tool.\n");
+    "Run some-unknown-utility --flag.\nAlso use another-unknown-tool.\n");
   writeFileSync(join(root, "package.json"), JSON.stringify({}));
 
   const files = [{

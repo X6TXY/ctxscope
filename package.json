@@ -1,6 +1,6 @@
 {
   "name": "@x6txy/ctxscope",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Set up and maintain correct instructions for AI coding agents",
   "type": "module",
   "keywords": [
@@ -26,6 +26,8 @@
   },
   "files": [
     "dist",
+    "assets",
+    "docs/*.md",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"

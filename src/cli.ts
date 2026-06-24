@@ -4,19 +4,21 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
+import { formatCategoriesResult, generateCategoriesFile } from "./categories.js";
+import { generateCompletion, type Shell } from "./completion.js";
 import { ConfigError, loadConfig } from "./config.js";
 import { runDoctor } from "./doctor.js";
-import { runFix } from "./fix.js";
 import { getExplanationOrThrow } from "./explain.js";
-import { generateInstructions, formatGenerateResultHuman, getAgentPath, type AgentTarget } from "./generate.js";
+import { runFix } from "./fix.js";
+import { formatGenerateResultHuman, generateInstructions, type AgentTarget } from "./generate.js";
+import { getChangedFiles, getFileContentAtRef, isGitRepo, listFilesAtRef } from "./git.js";
 import { InitError, initConfig } from "./init.js";
+import { formatOptimizeResult, runOptimizeCommand } from "./optimize.js";
 import { formatHumanDoctorResult, formatHumanExplainResult, formatHumanFixResult, formatHumanScanResult, formatJsonDoctorResult, formatJsonExplainResult, formatJsonFixResult, formatJsonScanResult } from "./output.js";
+import { computeRepoFactsDelta, detectRepoFactsAtRef, formatDeltaHuman } from "./repo-facts-diff.js";
 import { detectRepoFacts } from "./repo-facts.js";
-import { detectRepoFactsAtRef, computeRepoFactsDelta, formatDeltaHuman } from "./repo-facts-diff.js";
-import { generateCompletion, type Shell } from "./completion.js";
 import { scanContext } from "./scan.js";
 import { SUPPORTED_AGENTS, type Agent } from "./types.js";
-import { isGitRepo, getChangedFiles, listFilesAtRef, getFileContentAtRef } from "./git.js";
 
 type ScanOptions = {
   agent: Agent;
@@ -54,45 +56,147 @@ function getVersion(): string {
 }
 
 function printHelp(): void {
+  const rows = (items: Array<[string, string]>): string => formatRows(items, 32);
+
   console.log(`ctxscope ${getVersion()}
 
-Inspect and lint coding-agent context files.
+Keep AI coding-agent instructions in sync with your repository.
 
-Usage:
-  ctxscope --help
-  ctxscope --version
-  ctxscope init [--config|--agent <agent>]
-  ctxscope scan [path] [--agent <agent>] [--json]
-  ctxscope doctor [path] [--agent <agent>] [--json] [--ci] [--verbose] [--changed] [--diff <base>]
-  ctxscope fix [path] [--agent <agent>] [--dry-run] [--json]
-  ctxscope explain <code> [--json]
-  ctxscope generate --agent <agent> [path] [--dry-run] [--force]
-  ctxscope top [path] [--agent <agent>] [--json]
-  ctxscope cost [path] [--agent <agent>] [--json]
-  ctxscope completion <shell>
+Core:
+${rows([
+  ["ctxscope scan [path]", "inventory discovered context files"],
+  ["ctxscope diagnose [path]", "validate context files and score health"],
+  ["ctxscope fix [path]", "preview or apply deterministic safe fixes"],
+  ["ctxscope generate [path]", "generate deterministic agent instructions"],
+])}
 
-Commands:
-  init                 Create ctxscope.config.json (use --agent to generate instructions).
-  scan                 Discover coding-agent context files for a path.
-  doctor               Lint coding-agent context files.
-  fix                  Apply safe deterministic context fixes.
-  explain              Explain a diagnostic code.
-  generate             Generate deterministic agent instructions.
-  top                  Show largest context files.
-  cost                 Show context token overhead.
-  completion           Generate shell completion script (zsh, bash, fish).
+Inspect:
+${rows([
+  ["ctxscope largest [path]", "show largest context files"],
+  ["ctxscope tokens [path]", "estimate context token overhead"],
+  ["ctxscope explain <code>", "explain a diagnostic code"],
+])}
+
+Skills:
+${rows([
+  ["ctxscope skills categories", "generate skill category map"],
+  ["ctxscope skills optimize", "consolidate skills into lightweight pointers"],
+])}
+
+Setup:
+${rows([
+  ["ctxscope init", "create ctxscope.config.json"],
+  ["ctxscope init --agent <agent>", "create agent instructions"],
+  ["ctxscope completion <shell>", "generate shell completion script"],
+])}
+
+Aliases:
+${rows([
+  ["doctor", "alias for diagnose"],
+  ["top", "alias for largest"],
+  ["cost", "alias for tokens"],
+  ["categories", "alias for skills categories"],
+  ["optimize", "alias for skills optimize"],
+])}
 
 Options:
-  --agent <agent>      Agent profile: all, codex, opencode, claude, generic.
-                       Default: all.
-  --json               Print machine-readable JSON.
-   --ci                 Exit 1 when doctor finds errors.
-   --verbose            Show detailed score breakdown (doctor only).
-   --dry-run            Show fixes without writing files.
-   --force              Overwrite existing files (used with generate/init --agent).
-   -h, --help           Show this help message.
-   -v, --version        Show the package version.
+${rows([
+  ["-h, --help", "show help"],
+  ["-v, --version", "show version"],
+  ["--agent <agent>", "all, codex, opencode, claude, generic  [default: all]"],
+  ["--json", "print machine-readable JSON"],
+  ["--ci", "exit 1 when diagnose finds errors"],
+  ["--verbose", "show detailed score breakdown"],
+  ["--dry-run", "preview without writing"],
+  ["--force", "overwrite existing generated files"],
+  ["--target <agent>", "target agent for skills optimize"],
+  ["--vault <path>", "vault directory for skill storage"],
+  ["--undo", "restore skills from vault"],
+  ["--noninteractive", "skip category prompt and use heuristics"],
+])}
 `);
+}
+
+function formatRows(items: Array<[string, string]>, width: number): string {
+  return items
+    .map(([left, right]) => {
+      const spacing = left.length >= width ? "  " : " ".repeat(width - left.length);
+      return `  ${left}${spacing}${right}`;
+    })
+    .join("\n");
+}
+
+type OptimizeCliOptions = {
+  target: Agent;
+  vaultDir: string | undefined;
+  dryRun: boolean;
+  undo: boolean;
+  noninteractive: boolean;
+};
+
+function parseOptimizeOptions(args: string[]): OptimizeCliOptions {
+  const options: OptimizeCliOptions = {
+    target: "all",
+    vaultDir: undefined,
+    dryRun: false,
+    undo: false,
+    noninteractive: false,
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+
+    if (arg === "--help" || arg === "-h") {
+      printHelp();
+      process.exit(0);
+    }
+
+    if (arg === "--dry-run") {
+      options.dryRun = true;
+      continue;
+    }
+
+    if (arg === "--undo") {
+      options.undo = true;
+      continue;
+    }
+
+    if (arg === "--noninteractive" || arg === "-n") {
+      options.noninteractive = true;
+      continue;
+    }
+
+    if (arg === "--target") {
+      options.target = parseAgent(args[index + 1]);
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--target=")) {
+      options.target = parseAgent(arg.slice("--target=".length));
+      continue;
+    }
+
+    if (arg === "--vault") {
+      options.vaultDir = args[index + 1];
+      if (!options.vaultDir || options.vaultDir.startsWith("-")) {
+        fail("missing value for --vault");
+      }
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--vault=")) {
+      options.vaultDir = arg.slice("--vault=".length);
+      continue;
+    }
+
+    if (arg.startsWith("-")) {
+      fail(`unknown option '${arg}'`);
+    }
+  }
+
+  return options;
 }
 
 function fail(message: string): never {
@@ -703,7 +807,7 @@ function runCostCommand(args: string[]): void {
   console.log(output.join("\n"));
 }
 
-function main(argv: string[]): void {
+async function main(argv: string[]): Promise<void> {
   const [command, ...args] = argv;
 
   if (!command || command === "--help" || command === "-h") {
@@ -762,7 +866,7 @@ function main(argv: string[]): void {
     fail(`unknown init option '${args[0]}'. Use --config or --agent.`);
   }
 
-  if (command === "doctor") {
+  if (command === "doctor" || command === "diagnose") {
     try {
       runDoctorCommand(parseDoctorOptions(args));
     } catch (error) {
@@ -793,12 +897,12 @@ function main(argv: string[]): void {
     return;
   }
 
-  if (command === "top") {
+  if (command === "top" || command === "largest") {
     runTopCommand(args);
     return;
   }
 
-  if (command === "cost") {
+  if (command === "cost" || command === "tokens") {
     runCostCommand(args);
     return;
   }
@@ -814,6 +918,69 @@ function main(argv: string[]): void {
       fail("missing shell. Usage: ctxscope completion zsh | bash | fish");
     }
     console.log(generateCompletion(shell));
+    return;
+  }
+
+  if (command === "skills") {
+    const [subcommand, ...subArgs] = args;
+
+    if (!subcommand || subcommand === "--help" || subcommand === "-h") {
+      console.log(`ctxscope skills
+
+Manage agent skills and skill category maps.
+
+Commands:
+  ctxscope skills categories      generate skill category map
+  ctxscope skills optimize        consolidate skills into lightweight pointers
+
+Options:
+  --target <agent>                target agent for optimize
+  --vault <path>                  vault directory for skill storage
+  --dry-run                       preview without writing
+  --undo                          restore skills from vault
+  --noninteractive                skip category prompt and use heuristics
+`);
+      return;
+    }
+
+    if (subcommand === "categories") {
+      const result = generateCategoriesFile("all");
+      console.log(formatCategoriesResult(result));
+      return;
+    }
+
+    if (subcommand === "optimize") {
+      const options = parseOptimizeOptions(subArgs);
+      const result = await runOptimizeCommand({
+        target: options.target,
+        vaultDir: options.vaultDir,
+        dryRun: options.dryRun,
+        undo: options.undo,
+        noninteractive: options.noninteractive,
+      });
+      console.log(formatOptimizeResult(result));
+      return;
+    }
+
+    fail(`unknown skills command '${subcommand}'. Expected categories or optimize.`);
+  }
+
+  if (command === "categories") {
+    const result = generateCategoriesFile("all");
+    console.log(formatCategoriesResult(result));
+    return;
+  }
+
+  if (command === "optimize") {
+    const options = parseOptimizeOptions(args);
+    const result = await runOptimizeCommand({
+      target: options.target,
+      vaultDir: options.vaultDir,
+      dryRun: options.dryRun,
+      undo: options.undo,
+      noninteractive: options.noninteractive,
+    });
+    console.log(formatOptimizeResult(result));
     return;
   }
 

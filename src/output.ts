@@ -48,39 +48,26 @@ export function formatHumanDoctorResult(result: DoctorResult, verbose?: boolean)
 
 function formatVerboseScore(result: DoctorResult): string {
   const score = result.score;
-  const diagByCode = new Map<string, Diagnostic[]>();
-  for (const d of result.diagnostics) {
-    const arr = diagByCode.get(d.code) ?? [];
-    arr.push(d);
-    diagByCode.set(d.code, arr);
-  }
+  const breakdown = result.scoreBreakdown;
 
-  const penaltyLine = (category: keyof ContextScore, codes: string[]): string[] => {
-    const lines: string[] = [];
-    let totalDeduction = 0;
+  const penaltyLine = (category: Exclude<keyof ContextScore, "overall">): string[] => {
+    const item = breakdown[category];
+    const title = category.charAt(0).toUpperCase() + category.slice(1);
+    const lines = item.penalties.map((penalty) => {
+      const count = penalty.count > 1 ? ` x${penalty.count}` : "";
+      return `    ${colors.dim(`-${penalty.deduction}`)}  ${penalty.code}${count}  ${penalty.message}`;
+    });
 
-    for (const code of codes) {
-      const diagnostics = diagByCode.get(code) ?? [];
-      if (diagnostics.length === 0) continue;
-      const errors = diagnostics.filter((d) => d.severity === "error").length;
-      const warnings = diagnostics.filter((d) => d.severity === "warn").length;
-      const deduction = Math.min(errors * 22, 66) + Math.min(warnings * 10, 40);
-      totalDeduction += deduction;
-      const label = `${code}  ${diagnostics[0]?.message ?? ""}`;
-      lines.push(`    ${colors.dim(`-${deduction}`)}  ${label}`);
-    }
-
-    const catScore = score[category];
-    return [`  ${category.charAt(0).toUpperCase() + category.slice(1)}  ${scoreColor(catScore)(`${catScore}/100`)}`, ...lines];
+    return [`  ${title}  ${scoreColor(item.score)(`${item.score}/100`)}`, ...lines];
   };
 
   return [
     `${colors.bold("Agent Context Score")}  ${scoreColor(score.overall)(`${score.overall}/100`)}`,
-    ...penaltyLine("correctness", ["CTX101", "CTX102", "CTX103", "CTX104"]),
-    ...penaltyLine("freshness", ["CTX003", "CTX005"]),
-    ...penaltyLine("efficiency", ["CTX001", "CTX006", "CTX105"]),
-    ...penaltyLine("consistency", ["CTX002", "CTX101"]),
-    `  Coverage  ${scoreColor(score.coverage)(`${score.coverage}/100`)}`,
+    ...penaltyLine("correctness"),
+    ...penaltyLine("freshness"),
+    ...penaltyLine("efficiency"),
+    ...penaltyLine("consistency"),
+    ...penaltyLine("coverage"),
   ].join("\n");
 }
 
@@ -91,6 +78,7 @@ export function formatJsonDoctorResult(result: DoctorResult): string {
     status: result.status,
     summary: result.summary,
     score: result.score,
+    scoreBreakdown: result.scoreBreakdown,
     files: result.files,
     diagnostics: result.diagnostics,
   }, null, 2);

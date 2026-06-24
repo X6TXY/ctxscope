@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.6.0 - 2026-06-22
+
+### Added
+
+- Added `ctxscope optimize` command — consolidates agent skill files into lightweight category pointers (SkillPointer pattern). Reduces startup token cost from skill descriptions by ~90%.
+- Added `CTX106` — detects skill description token overhead when too many skills are loaded at startup. Warns at >1,000 tokens, errors at >5,000 tokens.
+- Added heuristic categorization engine (35 categories) for automatic skill classification.
+- Added `--target`, `--vault`, `--dry-run`, `--undo` flags to `optimize` command.
+- Added `--skills` flag to `doctor` for focused skill bloat reporting.
+
+### Changed
+
+- Updated `ctxscope doctor` to include CTX106 skill bloat diagnostic in the `correctness` score category.
+- Updated shell completions (zsh, bash, fish) with `optimize` subcommand and flags.
+
 ## 0.5.1 - 2026-06-22
 
 ### Changed

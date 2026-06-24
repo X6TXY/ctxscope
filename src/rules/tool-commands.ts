@@ -62,6 +62,9 @@ function shouldSkipCommand(cmd: string): boolean {
   if (cmd.startsWith(">") || cmd.startsWith("|") || cmd.startsWith("&") || cmd.startsWith("$")) {
     return true;
   }
+  if (/[>&|]/.test(cmd)) {
+    return true;
+  }
   if (cmd.includes("`")) {
     return true;
   }
@@ -190,7 +193,11 @@ function extractCommands(content: string): { command: string; offset: number }[]
   for (const match of content.matchAll(runPattern)) {
     const cmdContent = match[1]?.trim();
     if (cmdContent) {
-      const firstWord = cmdContent.split(/\s+/)[0];
+      const words = cmdContent.split(/\s+/);
+      if (words.length < 2) {
+        continue;
+      }
+      const firstWord = words[0];
       if (firstWord) {
         results.push({ command: firstWord, offset: match.index! });
       }
@@ -199,8 +206,11 @@ function extractCommands(content: string): { command: string; offset: number }[]
 
   const directPattern = /\b(?:run|use|execute)\s+(\S+)/gi;
   for (const match of content.matchAll(directPattern)) {
-    const rawCmd = match[1]?.trim().replace(/^`+|`+$/g, "");
+    const rawCmd = match[1]?.trim();
     if (rawCmd) {
+      if (rawCmd.includes("`")) {
+        continue;
+      }
       if (isExecPrefix(rawCmd)) {
         continue;
       }

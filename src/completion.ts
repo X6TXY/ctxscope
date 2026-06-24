@@ -20,7 +20,7 @@ function genAgentList(): string {
 }
 
 function codeList(): string {
-  return "CTX001 CTX002 CTX003 CTX004 CTX005 CTX006 CTX101 CTX102 CTX103 CTX104 CTX105";
+  return "CTX001 CTX002 CTX003 CTX004 CTX005 CTX006 CTX101 CTX102 CTX103 CTX104 CTX105 CTX106";
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -32,72 +32,95 @@ function generateZshCompletion(): string {
 _ctxscope() {
   local -a commands
   commands=(
-    'init:Create ctxscope.config.json or generate agent instructions'
-    'scan:Discover coding-agent context files'
-    'doctor:Lint coding-agent context files'
-    'fix:Apply safe deterministic context fixes'
-    'explain:Explain a diagnostic code'
+    'scan:Inventory discovered context files'
+    'diagnose:Validate context files and score health'
+    'fix:Preview or apply deterministic safe fixes'
     'generate:Generate deterministic agent instructions'
-    'top:Show largest context files'
-    'cost:Show context token overhead'
+    'largest:Show largest context files'
+    'tokens:Estimate context token overhead'
+    'explain:Explain a diagnostic code'
+    'skills:Manage agent skills'
+    'init:Create ctxscope.config.json or generate agent instructions'
     'completion:Generate shell completion script'
+    'doctor:Alias for diagnose'
+    'top:Alias for largest'
+    'cost:Alias for tokens'
+    'categories:Alias for skills categories'
+    'optimize:Alias for skills optimize'
   )
 
   local -a _agents
   _agents=(${agentList()})
 
-  _arguments -C \\
-    '(-h --help)'{-h,--help}'[Show help message]' \\
-    '(-v --version)'{-v,--version}'[Show version]' \\
-    "1: :{_describe 'command' commands}" \\
+  _arguments -C \
+    '(-h --help)'{-h,--help}'[Show help message]' \
+    '(-v --version)'{-v,--version}'[Show version]' \
+    "1: :{_describe 'command' commands}" \
     '*:: :->args'
 
   case "$state" in
     args)
       case "$words[1]" in
-        doctor)
-          _arguments \\
-            '--agent[Agent profile]:agent:($_agents)' \\
-            '--json[Print JSON output]' \\
-            '--ci[Exit 1 on errors]' \\
-            '--changed[Only changed context]' \\
-            '--verbose[Score breakdown]' \\
-            '--diff[Diff against base ref]:base ref' \\
+        doctor|diagnose)
+          _arguments \
+            '--agent[Agent profile]:agent:($_agents)' \
+            '--json[Print JSON output]' \
+            '--ci[Exit 1 on errors]' \
+            '--changed[Only changed context]' \
+            '--verbose[Score breakdown]' \
+            '--diff[Diff against base ref]:base ref' \
             '*: :_files'
           ;;
-        scan|top|cost)
-          _arguments \\
-            '--agent[Agent profile]:agent:($_agents)' \\
-            '--json[Print JSON output]' \\
+        scan|top|cost|largest|tokens)
+          _arguments \
+            '--agent[Agent profile]:agent:($_agents)' \
+            '--json[Print JSON output]' \
             '*: :_files'
           ;;
         fix)
-          _arguments \\
-            '--agent[Agent profile]:agent:($_agents)' \\
-            '--dry-run[Show fixes without writing]' \\
-            '--json[Print JSON output]' \\
+          _arguments \
+            '--agent[Agent profile]:agent:($_agents)' \
+            '--dry-run[Show fixes without writing]' \
+            '--json[Print JSON output]' \
             '*: :_files'
           ;;
         generate)
-          _arguments \\
-            '--agent[Agent to generate for]:agent:(${genAgentList()})' \\
-            '--dry-run[Preview without writing]' \\
-            '--force[Overwrite existing files]' \\
+          _arguments \
+            '--agent[Agent to generate for]:agent:(${genAgentList()})' \
+            '--dry-run[Preview without writing]' \
+            '--force[Overwrite existing files]' \
             '*: :_files'
           ;;
         init)
-          _arguments \\
-            '--agent[Agent to generate for]:agent:(${genAgentList()})' \\
+          _arguments \
+            '--agent[Agent to generate for]:agent:(${genAgentList()})' \
             '--config[Create config file only]'
           ;;
         explain)
-          _arguments \\
-            '--json[Print JSON output]' \\
+          _arguments \
+            '--json[Print JSON output]' \
             ':diagnostic code:(${codeList()})'
           ;;
         completion)
-          _arguments \\
+          _arguments \
             ':shell:(zsh bash fish)'
+          ;;
+        skills)
+          _arguments \
+            '1:skills command:(categories optimize)' \
+            '--target[Target agent]:agent:($_agents)' \
+            '--vault[Vault directory]:vault directory:_files -/' \
+            '--dry-run[Show changes without moving files]' \
+            '--undo[Restore skills from vault]' \
+            '--noninteractive[Skip category prompt]'
+          ;;
+        optimize)
+          _arguments \
+            '--target[Target agent]:agent:($_agents)' \
+            '--vault[Vault directory]:vault directory:_files -/' \
+            '--dry-run[Show changes without moving files]' \
+            '--undo[Restore skills from vault]' \
+            '--noninteractive[Skip category prompt]'
           ;;
       esac
       ;;
@@ -113,7 +136,7 @@ function generateBashCompletion(): string {
   local cur prev words cword
   _init_completion || return
 
-  local commands="init scan doctor fix explain generate top cost completion"
+  local commands="scan diagnose fix generate largest tokens explain skills init completion doctor top cost categories optimize"
   local _agents="${agentList()}"
   local _gen_agents="${genAgentList()}"
   local _codes="${codeList()}"
@@ -125,14 +148,14 @@ function generateBashCompletion(): string {
   fi
 
   case "\${words[1]}" in
-    doctor)
+    doctor|diagnose)
       case "$prev" in
         --agent) COMPREPLY=($(compgen -W "$_agents" -- "$cur")) ;;
         --diff) COMPREPLY=($(compgen -W "main origin/main HEAD" -- "$cur")) ;;
         *) COMPREPLY=($(compgen -W "--agent --json --ci --changed --verbose --diff" -- "$cur")) ;;
       esac
       ;;
-    scan|top|cost)
+    scan|top|cost|largest|tokens)
       case "$prev" in
         --agent) COMPREPLY=($(compgen -W "$_agents" -- "$cur")) ;;
         *) COMPREPLY=($(compgen -W "--agent --json" -- "$cur")) ;;
@@ -167,6 +190,24 @@ function generateBashCompletion(): string {
     completion)
       COMPREPLY=($(compgen -W "$_shells" -- "$cur"))
       ;;
+    skills)
+      if [[ $cword -eq 2 ]]; then
+        COMPREPLY=($(compgen -W "categories optimize" -- "$cur"))
+        return
+      fi
+      case "$prev" in
+        --target) COMPREPLY=($(compgen -W "$_agents" -- "$cur")) ;;
+        --vault) COMPREPLY=($(compgen -d -- "$cur")) ;;
+        *) COMPREPLY=($(compgen -W "--target --vault --dry-run --undo --noninteractive" -- "$cur")) ;;
+      esac
+      ;;
+    optimize)
+      case "$prev" in
+        --target) COMPREPLY=($(compgen -W "$_agents" -- "$cur")) ;;
+        --vault) COMPREPLY=($(compgen -d -- "$cur")) ;;
+        *) COMPREPLY=($(compgen -W "--target --vault --dry-run --undo --noninteractive" -- "$cur")) ;;
+      esac
+      ;;
     *)
       COMPREPLY=($(compgen -W "$commands" -- "$cur"))
       ;;
@@ -190,30 +231,38 @@ function generateFishCompletion(): string {
 end
 
 # Commands
-complete -c ctxscope -f -a init -d "Create ctxscope.config.json or generate agent instructions"
-complete -c ctxscope -f -a scan -d "Discover coding-agent context files"
-complete -c ctxscope -f -a doctor -d "Lint coding-agent context files"
-complete -c ctxscope -f -a fix -d "Apply safe deterministic context fixes"
-complete -c ctxscope -f -a explain -d "Explain a diagnostic code"
+complete -c ctxscope -f -a scan -d "Inventory discovered context files"
+complete -c ctxscope -f -a diagnose -d "Validate context files and score health"
+complete -c ctxscope -f -a fix -d "Preview or apply deterministic safe fixes"
 complete -c ctxscope -f -a generate -d "Generate deterministic agent instructions"
-complete -c ctxscope -f -a top -d "Show largest context files"
-complete -c ctxscope -f -a cost -d "Show context token overhead"
+complete -c ctxscope -f -a largest -d "Show largest context files"
+complete -c ctxscope -f -a tokens -d "Estimate context token overhead"
+complete -c ctxscope -f -a explain -d "Explain a diagnostic code"
+complete -c ctxscope -f -a skills -d "Manage agent skills"
+complete -c ctxscope -f -a init -d "Create ctxscope.config.json or generate agent instructions"
 complete -c ctxscope -f -a completion -d "Generate shell completion script"
+complete -c ctxscope -f -a doctor -d "Alias for diagnose"
+complete -c ctxscope -f -a top -d "Alias for largest"
+complete -c ctxscope -f -a cost -d "Alias for tokens"
+complete -c ctxscope -f -a categories -d "Alias for skills categories"
+complete -c ctxscope -f -a optimize -d "Alias for skills optimize"
 
 # Global options
 complete -c ctxscope -n "not __fish_ctxscope_using_command" -s h -l help -d "Show help message"
 complete -c ctxscope -n "not __fish_ctxscope_using_command" -s v -l version -d "Show version"
 
-# doctor
-complete -c ctxscope -n "__fish_ctxscope_using_command doctor" -l agent -xa "${agents}" -d "Agent profile"
-complete -c ctxscope -n "__fish_ctxscope_using_command doctor" -l json -d "Print JSON output"
-complete -c ctxscope -n "__fish_ctxscope_using_command doctor" -l ci -d "Exit 1 on errors"
-complete -c ctxscope -n "__fish_ctxscope_using_command doctor" -l changed -d "Only changed context"
-complete -c ctxscope -n "__fish_ctxscope_using_command doctor" -l verbose -d "Score breakdown"
-complete -c ctxscope -n "__fish_ctxscope_using_command doctor" -l diff -x -d "Diff against base ref"
+# diagnose / doctor
+for cmd in diagnose doctor
+  complete -c ctxscope -n "__fish_ctxscope_using_command $cmd" -l agent -xa "${agents}" -d "Agent profile"
+  complete -c ctxscope -n "__fish_ctxscope_using_command $cmd" -l json -d "Print JSON output"
+  complete -c ctxscope -n "__fish_ctxscope_using_command $cmd" -l ci -d "Exit 1 on errors"
+  complete -c ctxscope -n "__fish_ctxscope_using_command $cmd" -l changed -d "Only changed context"
+  complete -c ctxscope -n "__fish_ctxscope_using_command $cmd" -l verbose -d "Score breakdown"
+  complete -c ctxscope -n "__fish_ctxscope_using_command $cmd" -l diff -x -d "Diff against base ref"
+end
 
-# scan / top / cost
-for cmd in scan top cost
+# scan / largest / tokens
+for cmd in scan top cost largest tokens
   complete -c ctxscope -n "__fish_ctxscope_using_command $cmd" -l agent -xa "${agents}" -d "Agent profile"
   complete -c ctxscope -n "__fish_ctxscope_using_command $cmd" -l json -d "Print JSON output"
 end
@@ -238,5 +287,15 @@ complete -c ctxscope -n "__fish_ctxscope_using_command explain" -xa "${codes}"
 
 # completion
 complete -c ctxscope -n "__fish_ctxscope_using_command completion" -xa "zsh bash fish"
+
+# skills / optimize alias
+complete -c ctxscope -n "__fish_ctxscope_using_command skills" -xa "categories optimize"
+for cmd in skills optimize
+  complete -c ctxscope -n "__fish_ctxscope_using_command $cmd" -l target -xa "${agents}" -d "Target agent"
+  complete -c ctxscope -n "__fish_ctxscope_using_command $cmd" -l vault -r -d "Vault directory"
+  complete -c ctxscope -n "__fish_ctxscope_using_command $cmd" -l dry-run -d "Show changes without moving files"
+  complete -c ctxscope -n "__fish_ctxscope_using_command $cmd" -l undo -d "Restore skills from vault"
+  complete -c ctxscope -n "__fish_ctxscope_using_command $cmd" -l noninteractive -d "Skip category prompt"
+end
 `;
 }

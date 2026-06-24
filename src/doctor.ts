@@ -4,8 +4,9 @@ import { collectPackageManagerDiagnostics } from "./rules/package-manager.js";
 import { collectPackageScriptDiagnostics } from "./rules/package-scripts.js";
 import { collectPathDiagnostics } from "./rules/repository-paths.js";
 import { collectToolCommandDiagnostics } from "./rules/tool-commands.js";
+import { collectSkillBloatDiagnostics } from "./rules/skill-bloat.js";
 import { sortDiagnostics } from "./diagnostics.js";
-import { calculateContextScore } from "./score.js";
+import { calculateContextScore, calculateScoreBreakdown } from "./score.js";
 import type { Agent, CtxscopeConfig, DoctorResult } from "./types.js";
 
 export function runDoctor(target: string, agent: Agent, config: CtxscopeConfig): DoctorResult {
@@ -17,6 +18,7 @@ export function runDoctor(target: string, agent: Agent, config: CtxscopeConfig):
     ...collectPackageScriptDiagnostics(target, scan.files, config),
     ...collectPathDiagnostics(target, scan.files, config),
     ...collectToolCommandDiagnostics(target, scan.files, config),
+    ...collectSkillBloatDiagnostics(agent, config),
   ]);
   const errors = diagnostics.filter((diagnostic) => diagnostic.severity === "error").length;
   const warnings = diagnostics.filter((diagnostic) => diagnostic.severity === "warn").length;
@@ -32,6 +34,7 @@ export function runDoctor(target: string, agent: Agent, config: CtxscopeConfig):
       errors,
     },
     score: calculateContextScore(scan, diagnostics, config),
+    scoreBreakdown: calculateScoreBreakdown(scan, diagnostics, config),
     files: scan.files,
     diagnostics,
   };

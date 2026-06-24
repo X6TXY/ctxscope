@@ -110,6 +110,15 @@ const EXPLANATIONS: Record<string, RuleExplanation> = {
     fix: "Remove low-value instructions, deduplicate content, or increase maxTokens in ctxscope.config.json.",
     safeAutofix: false,
   },
+  CTX106: {
+    code: "CTX106",
+    title: "Skill description token overhead",
+    severity: "warn",
+    problem: "Agent skill directories contain many skills with large descriptions that consume startup token budget.",
+    whyItMatters: "Every skill's name and description is loaded into context at startup. With many skills, this can consume 10K+ tokens before any work begins, reducing effective context window.",
+    fix: "Use `ctxscope optimize` to consolidate skills into lightweight category pointers. This moves raw skills to a hidden vault and replaces them with compact discovery instructions.",
+    safeAutofix: false,
+  },
 };
 
 export function getExplanation(code: string): RuleExplanation | undefined {

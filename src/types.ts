@@ -21,7 +21,7 @@ export type DiagnosticFix = {
 };
 
 export type Diagnostic = {
-  code: "CTX001" | "CTX002" | "CTX003" | "CTX004" | "CTX005" | "CTX006" | string;
+  code: "CTX001" | "CTX002" | "CTX003" | "CTX004" | "CTX005" | "CTX006" | "CTX105" | "CTX106" | string;
   severity: DiagnosticSeverity;
   path: string;
   message: string;
@@ -39,6 +39,18 @@ export type ContextScore = {
   consistency: number;
   coverage: number;
 };
+
+export type ScorePenalty = {
+  code: string;
+  count: number;
+  deduction: number;
+  message: string;
+};
+
+export type ScoreBreakdown = Record<Exclude<keyof ContextScore, "overall">, {
+  score: number;
+  penalties: ScorePenalty[];
+}>;
 
 export type CtxscopeConfig = {
   maxTokens: number;
@@ -66,6 +78,7 @@ export type DoctorResult = {
     errors: number;
   };
   score: ContextScore;
+  scoreBreakdown: ScoreBreakdown;
   files: ContextFile[];
   diagnostics: Diagnostic[];
 };
